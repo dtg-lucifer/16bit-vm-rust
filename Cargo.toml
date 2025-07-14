@@ -1,6 +1,11 @@
 [package]
-name = "rusty-16bit-vm"
+name = "rustyvm"
 version = "0.1.0"
 edition = "2024"
 
+[lints.rust]
+
 [dependencies]
+
+[[bin]]
+name = "vm"

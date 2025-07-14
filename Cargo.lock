@@ -3,5 +3,5 @@
 version = 4
 
 [[package]]
-name = "rusty-16bit-vm"
+name = "rustyvm"
 version = "0.1.0"
