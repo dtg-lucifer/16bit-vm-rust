@@ -1,5 +1,9 @@
+use std::fmt::Display;
+
 use crate::memory::{Addressable, LinearMemory};
 
+/// Register implementation
+#[derive(Debug)]
 pub enum Register {
     A,
     B,
@@ -11,9 +15,52 @@ pub enum Register {
     FLAGS,
 }
 
+#[derive(Debug)]
+pub enum Instruction {
+    Nop,
+    Push,
+    Pop,
+    AddStack,
+    AddRegister,
+}
+
+#[derive(Debug)]
 #[repr(u8)]
 pub enum Op {
     Nop,
+    Push(u8),
+    Pop(Register),
+    AddStack,
+    AddRegister(Register, Register),
+}
+
+impl Op {
+    pub fn value(&self) -> u8 {
+        unsafe { *<*const _>::from(self).cast::<u8>() }
+    }
+
+    pub fn equals(x: u8, other: Self) -> bool {
+        x == other.value()
+    }
+}
+
+impl Display for Instruction {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "(0x{:?})", self)
+    }
+}
+
+// Instruction = [ 0 0 0 0 0 0 0 0 | 0 0 0 0 0 0 0 0 ]
+//                  OPERATOR       | ARG(s)
+//                                 | 8 Bit literal
+//                                 | REG1 | REG2
+fn parse_instructions(x: u16) -> Result<Instruction, String> {
+    let op = (x & 0xff) as u8;
+
+    match op {
+        _b if Op::equals(op, Op::Nop) => Ok(Instruction::Nop),
+        _ => Err(format!("Error: not a valid instruction - 0x{:X}", op)),
+    }
 }
 
 pub struct Machine {
@@ -32,10 +79,6 @@ impl Machine {
     pub fn step(&mut self) -> Result<(), String> {
         let pc = self.registers[Register::PC as usize];
 
-        // Instruction = [ 0 0 0 0 0 0 0 0 | 0 0 0 0 0 0 0 0 ]
-        //                  OPERATOR       | ARG(s)
-        //                                 | 8 Bit literal
-        //                                 | REG1 | REG2
         let instruction = self.memory.read2(pc).unwrap();
 
         // Increment the Program Counter register
@@ -46,12 +89,13 @@ impl Machine {
         // instruction
         self.registers[Register::PC as usize] = pc + 2;
 
-        println!("{instruction} @ {pc}");
+        let op = parse_instructions(instruction)?;
 
-        let op = (instruction & 0xff) as u8;
+        println!("{instruction} @ {pc} @ {op:?}");
+
         match op {
-            x if x == Op::Nop as u8 => Ok(()),
-            _ => Err(format!("Error: unknown operator 0x{:X}", op)),
+            Instruction::Nop => Ok(()),
+            _ => Err(format!("Error: unknown operator 0x{:?}", op)),
         }
     }
 }
