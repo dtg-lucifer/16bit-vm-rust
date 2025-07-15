@@ -131,6 +131,27 @@ Each instruction is encoded as 2 consecutive bytes:
 +-----------------------------+-----------------------------+
 ```
 
+### Programming Instructions
+
+There are two ways to write instructions to memory:
+
+#### 1. Using 8-bit Operations (Recommended for Clarity)
+
+```
+// Write a PUSH 10 instruction
+memory.write(0, 0x01);  // PUSH opcode
+memory.write(1, 0x0A);  // Value 10
+```
+
+#### 2. Using 16-bit Operations (More Compact)
+
+```
+// Write a PUSH 10 instruction in one operation
+memory.write2(0, 0x0A01);  // 0x01 = opcode, 0x0A = value 10
+```
+
+Both approaches produce identical results in memory, but the 8-bit operations can be easier to understand for beginners.
+
 ## Example Execution Trace
 
 Here's an execution trace of a simple program that adds two numbers:
@@ -194,8 +215,38 @@ The VM stores 16-bit values in memory using little-endian format:
 ```
 
 For example, to store the value 0x1234:
+
 - Memory[N] = 0x34 (lower byte)
 - Memory[N+1] = 0x12 (upper byte)
+
+#### Memory Access Methods
+
+The VM provides both 8-bit and 16-bit memory access methods:
+
+```
+// 8-bit operations
+byte = read(address)
+write(address, byte)
+
+// 16-bit operations
+word = read2(address)
+write2(address, word)
+```
+
+The 16-bit operations automatically handle the byte order conversion:
+
+```
+// Reading 16-bit value
+function read2(address):
+    low_byte = read(address)
+    high_byte = read(address + 1)
+    return (high_byte << 8) | low_byte
+
+// Writing 16-bit value
+function write2(address, value):
+    write(address, value & 0xFF)         // low byte
+    write(address + 1, (value >> 8) & 0xFF)  // high byte
+```
 
 ## Future Architecture Extensions
 
@@ -205,6 +256,36 @@ The VM architecture could be extended with:
 2. **Subroutine Support**: Implement CALL/RETURN instructions using the stack
 3. **Memory-Mapped I/O**: Designate special memory regions for device I/O
 4. **Interrupts**: Support for handling asynchronous events
+5. **Additional Operations**: More complex instructions like multiplication, division, or bitwise operations
+
+### Example Extension: Multiplication
+
+A multiplication instruction could be added as follows:
+
+```
+// MULSTACK (0x05) - Pop two values, multiply them, push result
+function mulstack():
+    value1 = pop()
+    value2 = pop()
+    result = value1 * value2
+    push(result)
+
+// Sample Program (Calculating 8 * 3 = 24)
+Memory[0] = 0x01  // PUSH
+Memory[1] = 0x08  // Value 8
+Memory[2] = 0x01  // PUSH
+Memory[3] = 0x03  // Value 3
+Memory[4] = 0x05  // MULSTACK
+Memory[5] = 0x00  // No argument
+Memory[6] = 0x02  // POPREGISTER
+Memory[7] = 0x00  // Register A
+
+// In 16-bit format:
+memory.write2(0, 0x0801)  // PUSH 8
+memory.write2(2, 0x0301)  // PUSH 3
+memory.write2(4, 0x0005)  // MULSTACK
+memory.write2(6, 0x0002)  // POPREGISTER A
+```
 
 ## Implementation Considerations
 

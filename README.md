@@ -96,7 +96,7 @@ Memory:
 
 Programs are loaded directly into memory starting at address 0. Each instruction and its argument must be written to consecutive bytes.
 
-Example:
+Example using 8-bit memory operations (preferred method):
 
 ```rust
 // Push 10 onto stack
@@ -115,6 +115,27 @@ vm.memory.write(5, 0);     // Not used
 vm.memory.write(6, 0x02);  // POPREGISTER opcode
 vm.memory.write(7, 0);     // Register A (index 0)
 ```
+
+Alternative example using 16-bit memory operations:
+
+```rust
+// Each instruction is written as a single 16-bit value
+// Format: opcode in lower 8 bits, argument in upper 8 bits
+
+// Push 10 onto stack
+vm.memory.write2(0, 0x0A01);  // 0x01 = PUSH, 0x0A = 10
+
+// Push 8 onto stack
+vm.memory.write2(2, 0x0801);  // 0x01 = PUSH, 0x08 = 8
+
+// Add the two values on stack
+vm.memory.write2(4, 0x0003);  // 0x03 = ADDSTACK, 0x00 = unused
+
+// Pop result into register A
+vm.memory.write2(6, 0x0002);  // 0x02 = POPREGISTER, 0x00 = Register A
+```
+
+Both approaches produce the same program in memory, but the 8-bit method is often easier to understand.
 
 ### Program Execution
 
@@ -199,6 +220,23 @@ pub struct LinearMemory {
 }
 ```
 
+The VM provides two ways to interact with memory:
+
+1. **8-bit Operations**:
+    - `read(addr)`: Read a single byte from memory
+    - `write(addr, value)`: Write a single byte to memory
+
+2. **16-bit Operations**:
+    - `read2(addr)`: Read a 16-bit value from memory (2 consecutive bytes)
+    - `write2(addr, value)`: Write a 16-bit value to memory
+
+16-bit values are stored in memory using little-endian format:
+
+```
+Address N:   Lower 8 bits
+Address N+1: Upper 8 bits
+```
+
 ### Machine
 
 The Machine struct ties everything together:
@@ -240,6 +278,37 @@ Potential improvements for the VM:
 - Extended memory addressing (beyond 8KB)
 - Virtual I/O devices (terminal, disk, etc.)
 - Interactive debugger with step-through execution
+
+## Programming Techniques
+
+### Using 8-bit vs 16-bit Operations
+
+The VM supports both 8-bit and 16-bit memory operations:
+
+**8-bit Operations (Recommended for Beginners)**:
+
+```rust
+// Writing a PUSH 10 instruction
+vm.memory.write(0, 0x01);  // PUSH opcode at address 0
+vm.memory.write(1, 10);    // Value 10 at address 1
+```
+
+**16-bit Operations (More Compact)**:
+
+```rust
+// Writing a PUSH 10 instruction (combining opcode and argument)
+vm.memory.write2(0, 0x0A01);  // 0x01 = opcode, 0x0A = 10
+```
+
+In both cases, the resulting memory contains the same values:
+
+- Memory[0] = 0x01 (PUSH opcode)
+- Memory[1] = 0x0A (value 10)
+
+### When to Use Each
+
+- **8-bit Operations**: Better for understanding the VM's byte-by-byte operation
+- **16-bit Operations**: More compact code when you're comfortable with the VM
 
 ## Debugging Tips
 
