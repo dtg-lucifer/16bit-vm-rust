@@ -2,7 +2,7 @@ all: run
 .PHONY: all
 
 run:
-	cargo run
+	cargo run --bin vm
 .PHONY: run
 
 build:
@@ -10,4 +10,4 @@ build:
 .PHONY: build
 
 watch:
-	cargo watch -c -q -x 'run -q'
+	cargo watch -c -q -x 'run -q --bin vm'
