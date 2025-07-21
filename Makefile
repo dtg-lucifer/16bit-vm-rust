@@ -24,5 +24,9 @@ build:
 	cargo build
 .PHONY: build
 
+format:
+	cargo fmt -- --config-path .rustfmt.toml
+.PHONY: format
+
 watch: gen-bin $(PROGRAM_SOURCES)
 	$(RC) $(R_WATCH_FLAGS) $(R_WATCH_COMMAND)
