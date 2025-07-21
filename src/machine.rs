@@ -136,11 +136,9 @@ fn parse_instructions(ins: u16) -> Result<Op, String> {
         }
         x if x == Op::PopRegister(Register::A).value() => {
             let arg = (ins & 0xf00) >> 8;
-            if let Some(r) = Register::from_u8(arg.try_into().unwrap()) {
-                Ok(Op::PopRegister(r))
-            } else {
-                Err(format!("unknown register - 0x{:X}", arg))
-            }
+            Register::from_u8(arg as u8)
+                .ok_or(format!("unknown register - 0x{:X}", arg))
+                .map(|r| Op::PopRegister(r))
         }
         x if x == Op::AddStack.value() => Ok(Op::AddStack),
         // TODO: Implement parsing for AddRegister operation

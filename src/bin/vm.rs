@@ -58,16 +58,11 @@ fn main() -> Result<(), String> {
     }
     print!("]\n");
 
-    let res = vm.memory.read_from_vec(&mut buffer);
-    match res {
-        Some((_, op)) => {
-            println!("Program: running loaded program...");
-            // Execute the program step by step
-            for _ in 0..(op as u32) {
-                vm.step()?;
-            }
+    if let Some((_, op)) = vm.memory.load_from_vec(&buffer, 0) {
+        println!("Program: running loaded program...");
+        for _ in 0..(op as u32) {
+            vm.step()?; // propagates error if any
         }
-        None => (),
     }
 
     // Display the result stored in register A (should be 18)

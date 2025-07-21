@@ -97,7 +97,7 @@ pub trait Addressable {
     /// Writes data read from a vector
     ///
     /// # Parameters
-    /// * `from` - The vector storing all of the 8 bit data
+    /// * `from: &Vec<u8>` - The vector storing all of the 8 bit data
     ///
     /// # Returns
     /// * `Option<(usize, usize)>` - The number of bytes written into memory
@@ -105,10 +105,12 @@ pub trait Addressable {
     ///
     /// # Note
     /// This function can only write the data came in 8 bit format
-    fn read_from_vec(&mut self, from: &mut Vec<u8>) -> Option<(usize, usize)> {
+    fn load_from_vec(&mut self, from: &Vec<u8>, addr: u16) -> Option<(usize, usize)> {
         let mut operations: usize = 0;
         for (i, b) in from.iter().enumerate() {
-            self.write(i as u16, *b);
+            if !self.write(addr + (i as u16), *b) {
+                return None;
+            }
             operations += 1;
         }
 
