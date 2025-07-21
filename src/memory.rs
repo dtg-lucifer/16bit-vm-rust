@@ -3,6 +3,8 @@
 //! This module provides the memory interface and a concrete implementation
 //! of linear memory for the virtual machine.
 
+use std::usize;
+
 /// Trait defining memory access operations for the VM.
 ///
 /// This trait defines the interface for all memory types that can be used
@@ -90,6 +92,27 @@ pub trait Addressable {
             }
         }
         true
+    }
+
+    /// Writes data read from a vector
+    ///
+    /// # Parameters
+    /// * `from` - The vector storing all of the 8 bit data
+    ///
+    /// # Returns
+    /// * `Option<(usize, usize)>` - The number of bytes written into memory
+    /// and the number of operations the CPU has to perform to execute all of those
+    ///
+    /// # Note
+    /// This function can only write the data came in 8 bit format
+    fn read_from_vec(&mut self, from: &mut Vec<u8>) -> Option<(usize, usize)> {
+        let mut operations: usize = 0;
+        for (i, b) in from.iter().enumerate() {
+            self.write(i as u16, *b);
+            operations += 1;
+        }
+
+        Some((operations, operations / 2))
     }
 }
 

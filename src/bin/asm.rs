@@ -1,7 +1,7 @@
 use std::{
     env,
     fs::File,
-    io::{BufRead, BufReader},
+    io::{self, BufRead, BufReader, Write},
     path::Path,
 };
 
@@ -44,7 +44,8 @@ fn main() -> Result<(), String> {
         }
     }
 
-    println!("{:?}", outputs);
+    let mut out = io::stdout().lock();
+    out.write_all(&outputs).map_err(|x| format!("{}", x))?;
 
     Ok(())
 }
