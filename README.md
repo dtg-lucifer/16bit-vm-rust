@@ -373,7 +373,7 @@ SIG $09     ; Signal to halt the VM
 cargo run --bin asm -- prog/your_program_asm > output.hex
 
 # Run the VM with your program
-cargo run --bin vm -- output.bin
+cargo run --bin vm -- output.hex
 ```
 
 ### Makefile Commands
