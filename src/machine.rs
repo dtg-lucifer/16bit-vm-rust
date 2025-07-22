@@ -3,6 +3,8 @@
 //! This module contains the core components of the virtual machine:
 //! registers, operations, instruction parsing, and execution logic.
 
+use std::collections::HashMap;
+
 use crate::memory::{Addressable, LinearMemory};
 
 /// Register set for the 16-bit VM.
@@ -80,6 +82,8 @@ pub enum Op {
     /// Add two registers, store result in first register (opcode 0x04)
     /// Parameters: destination register, source register
     AddRegister(Register, Register),
+    /// Signal returns the Signal
+    Signal(u8),
 }
 
 impl Op {
@@ -108,6 +112,18 @@ impl Op {
     }
 }
 
+/// Parses a 16-bit instruction and returns the 8 bit argument
+/// passed with the 8 bit op code
+///
+/// # Parameters
+/// * `ins` - The 16-bit instruction to parse
+///
+/// # Returns
+/// * `u8` - The 8-bit argument passed with the opcode
+fn parse_instructions_arg(ins: u16) -> u8 {
+    ((ins & 0xff00) >> 8) as u8
+}
+
 /// Instruction format in memory:
 /// [Address N]   : OPCODE (8 bits)
 /// [Address N+1] : ARGUMENT (8 bits)
@@ -130,21 +146,21 @@ fn parse_instructions(ins: u16) -> Result<Op, String> {
 
     match op {
         x if x == Op::Nop.value() => Ok(Op::Nop),
-        x if x == Op::Push(0).value() => {
-            let arg = (ins & 0xff00) >> 8;
-            Ok(Op::Push(arg as u8))
-        }
+        x if x == Op::Push(0).value() => Ok(Op::Push(parse_instructions_arg(ins))),
         x if x == Op::PopRegister(Register::A).value() => {
-            let arg = (ins & 0xf00) >> 8;
-            Register::from_u8(arg as u8)
+            let arg = parse_instructions_arg(ins);
+            Register::from_u8(arg)
                 .ok_or(format!("unknown register - 0x{:X}", arg))
                 .map(|r| Op::PopRegister(r))
         }
         x if x == Op::AddStack.value() => Ok(Op::AddStack),
-        // TODO: Implement parsing for AddRegister operation
+        x if x == Op::Signal(0).value() => Ok(Op::Signal(parse_instructions_arg(ins))),
+        // TODO: Implement the ADDREGISTER op code
         _ => Err(format!("unknown op - 0x{:X}", op)),
     }
 }
+
+type SignalFunction = fn(&mut Machine) -> Result<(), String>;
 
 /// The main virtual machine structure.
 ///
@@ -154,6 +170,10 @@ fn parse_instructions(ins: u16) -> Result<Op, String> {
 pub struct Machine {
     /// The VM's register set (8 registers, each 16 bits)
     pub registers: [u16; 8],
+    /// Keeps track whether the machine is in halt or not
+    pub halt: bool,
+    /// Keeps the cache of signal handler methods
+    pub signal_handlers: HashMap<u8, SignalFunction>,
     /// The VM's memory (dynamic dispatch allows for different implementations)
     pub memory: Box<dyn Addressable>,
 }
@@ -172,6 +192,8 @@ impl Machine {
         let memory_size = 8 * 1024; // 8 KB
         let mut machine = Self {
             registers: [0; 8],
+            halt: false,
+            signal_handlers: HashMap::new(),
             memory: Box::new(LinearMemory::new(memory_size)),
         };
         // Initialize SP to point to the beginning of stack area
@@ -192,6 +214,15 @@ impl Machine {
     /// The 16-bit value stored in the register
     pub fn get_register(&self, r: Register) -> u16 {
         self.registers[r as usize]
+    }
+
+    /// Sets the signal handler for specific signals
+    ///
+    /// This method:
+    /// - Sets the behaviour of different signals
+    /// - Gives the user full controll over the signals
+    pub fn define_handler(&mut self, index: u8, f: SignalFunction) {
+        self.signal_handlers.insert(index, f);
     }
 
     /// Pops a 16-bit value from the stack.
@@ -235,6 +266,35 @@ impl Machine {
         Ok(())
     }
 
+    /// Print the current state of registers and pointers of the machine
+    pub fn print_state(&self) {
+        println!("-----------------------------------------------");
+        println!("----------------Final State--------------------");
+        println!("Final output:");
+        println!(
+            "\tRegister A: 0x{:04X} ({})",
+            self.registers[Register::A as usize],
+            self.registers[Register::A as usize]
+        );
+        println!("Registers:");
+        for (i, reg) in self.registers.iter().enumerate() {
+            let reg_name = match Register::from_u8(i as u8) {
+                Some(r) => format!("{:?}", r),
+                None => "Unknown".to_string(),
+            };
+            println!("\tRegister {}: 0x{:04X}", reg_name, reg);
+        }
+        println!(
+            "\tStack Pointer (SP): 0x{:04X}",
+            self.registers[Register::SP as usize]
+        );
+        println!(
+            "\tProgram Counter (PC): 0x{:04X}",
+            self.registers[Register::PC as usize]
+        );
+        println!("-----------------------------------------------");
+    }
+
     /// Executes a single instruction in the VM.
     ///
     /// This method:
@@ -250,18 +310,23 @@ impl Machine {
     pub fn step(&mut self) -> Result<(), String> {
         let pc = self.registers[Register::PC as usize];
 
-        // Read opcode and argument as separate bytes
+        // // Read opcode and argument as separate bytes
         let opcode = self.memory.read(pc).unwrap_or(0);
         let arg = self.memory.read(pc + 1).unwrap_or(0);
 
-        // Construct the 16-bit instruction with opcode in lower byte and argument in upper byte
-        let instruction = opcode as u16 | ((arg as u16) << 8);
+        // // Construct the 16-bit instruction with opcode in lower byte and argument in upper byte
+        // let instruction = opcode as u16 | ((arg as u16) << 8);
+
+        let ins = self
+            .memory
+            .read2(pc)
+            .ok_or(format!("memory read fault at PC=0x{:04X}", pc))?;
 
         // Increment the Program Counter register by 2 to move to the next instruction
         // (each instruction is 2 bytes: 1 for opcode, 1 for argument)
         self.registers[Register::PC as usize] = pc + 2;
 
-        let op = parse_instructions(instruction)?;
+        let op = parse_instructions(ins)?;
 
         // Debug output - consider making this optional or moving to a debug method
         println!(
@@ -290,6 +355,13 @@ impl Machine {
             Op::AddRegister(r1, r2) => {
                 self.registers[r1 as usize] += self.registers[r2 as usize];
                 Ok(())
+            }
+            Op::Signal(s) => {
+                let sig_fn = self
+                    .signal_handlers
+                    .get(&s)
+                    .ok_or(format!("unknown signal - 0x{:X}", s))?;
+                sig_fn(self)
             }
         }
     }

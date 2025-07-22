@@ -13,7 +13,14 @@ use std::{
     path::Path,
 };
 
-use rustyvm::{Machine, Register};
+use rustyvm::Machine;
+
+fn signal_halt(vm: &mut Machine) -> Result<(), String> {
+    // This function is called when the VM halts
+    // It can be used to perform any cleanup or final operations
+    vm.halt = true;
+    Ok(())
+}
 
 /// The main entry point for the VM demo application.
 ///
@@ -25,6 +32,7 @@ use rustyvm::{Machine, Register};
 /// * `Err(String)` - Error message if execution failed
 fn main() -> Result<(), String> {
     let mut vm = Machine::new();
+    vm.define_handler(0x09, signal_halt);
 
     // ----------------------------------------------------------------
     // Load program from .bin file
@@ -58,15 +66,22 @@ fn main() -> Result<(), String> {
     }
     print!("]\n");
 
-    if let Some((_, op)) = vm.memory.load_from_vec(&buffer, 0) {
+    if let Some((_, _)) = vm.memory.load_from_vec(&buffer, 0) {
         println!("Program: running loaded program...");
-        for _ in 0..(op as u32) {
-            vm.step()?; // propagates error if any
+    }
+
+    while !vm.halt {
+        match vm.step() {
+            Ok(_) => continue, // Continue executing until halt
+            Err(e) => {
+                println!("Error during execution: {}", e);
+                return Err(e);
+            }
         }
     }
 
-    // Display the result stored in register A (should be 18)
-    println!("A = {}", vm.get_register(Register::A));
+    // Print the final state
+    vm.print_state();
 
     // Successful execution
     Ok(())
