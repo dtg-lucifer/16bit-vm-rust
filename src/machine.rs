@@ -59,6 +59,20 @@ impl Register {
             _ => None,
         }
     }
+
+    pub fn from_str(s: &str) -> Result<Self, String> {
+        match s {
+            "A" => Ok(Register::A),
+            "B" => Ok(Register::B),
+            "C" => Ok(Register::C),
+            "M" => Ok(Register::M),
+            "SP" => Ok(Register::SP),
+            "PC" => Ok(Register::PC),
+            "BP" => Ok(Register::BP),
+            "FLAGS" => Ok(Register::FLAGS),
+            _ => Err(format!("Invalid register name: {}", s)),
+        }
+    }
 }
 
 /// Operations supported by the VM.
@@ -82,7 +96,8 @@ pub enum Op {
     /// Add two registers, store result in first register (opcode 0x04)
     /// Parameters: destination register, source register
     AddRegister(Register, Register),
-    /// Signal returns the Signal
+    /// Signal returns the Signal (opcode 0x05)
+    /// Parameters: signal integer
     Signal(u8),
 }
 
@@ -282,7 +297,7 @@ impl Machine {
                 Some(r) => format!("{:?}", r),
                 None => "Unknown".to_string(),
             };
-            println!("\tRegister {}: 0x{:04X}", reg_name, reg);
+            println!("\tRegister {}: 0x{:04X} ({})", reg_name, reg, reg);
         }
         println!(
             "\tStack Pointer (SP): 0x{:04X}",

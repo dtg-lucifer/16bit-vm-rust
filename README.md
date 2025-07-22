@@ -89,6 +89,7 @@ Memory:
 | 0x02   | POPREGISTER | Register index    | Pop value from stack into register         |
 | 0x03   | ADDSTACK    | (none)            | Pop two values, add them, push result      |
 | 0x04   | ADDREGISTER | Two 4-bit indices | Add two registers, store in first register |
+| 0x05   | SIGNAL      | 8-bit signal code | Signal the VM with a specific code         |
 
 ## Programming the VM
 
@@ -331,7 +332,63 @@ SP: 0x1004
 AddStack: 10 + 8 = 18
 Instruction: opcode=0x02, arg=0x00 @ PC=6 => PopRegister(A)
 SP: 0x1002
-A = 18
+Instruction: opcode=0x05, arg=0x09 @ PC=8 => Signal(9)
+SP: 0x1000
+```
+
+## Assembly Language Support
+
+The VM includes a basic assembler that can translate assembly language instructions into bytecode. The assembler supports the following syntax:
+
+### Assembly Instructions
+
+| Assembly  | Description                           | Example    |
+| --------- | ------------------------------------- | ---------- |
+| `PUSH #n` | Push decimal value n onto stack       | `PUSH #10` |
+| `PUSH $n` | Push hexadecimal value n onto stack   | `PUSH $0A` |
+| `POP reg` | Pop value from stack into register    | `POP A`    |
+| `ADDS`    | Pop two values, add them, push result | `ADDS`     |
+| `SIG $n`  | Signal the VM with hex code n         | `SIG $09`  |
+
+### Assembly Example
+
+```
+PUSH #10    ; Push decimal 10 onto the stack
+PUSH #24    ; Push decimal 24 onto the stack
+ADDS        ; Add the two values (10+24=34)
+POP B       ; Store result (34) in register B
+PUSH #5     ; Push decimal 5 onto the stack
+PUSH #22    ; Push decimal 22 onto the stack
+ADDS        ; Add the two values (5+22=27)
+POP C       ; Store result (27) in register C
+PUSH #100   ; Push decimal 100 onto the stack
+POP A       ; Store value (100) in register A
+SIG $09     ; Signal to halt the VM
+```
+
+### Using the Assembler
+
+```bash
+# Compile assembly file to hexadecimal bytecode
+cargo run --bin asm -- prog/your_program_asm > output.hex
+
+# Convert hexadecimal bytecode to binary
+cargo run --bin bin -- prog/your_program > output.bin
+
+# Run the VM with your program
+cargo run --bin vm -- output.bin
+```
+
+### Makefile Commands
+
+For convenience, you can use the provided Makefile:
+
+```bash
+# Generate binary from an assembly file
+make gen-hex
+
+# Run the VM with the generated binary
+make run
 ```
 
 ## License

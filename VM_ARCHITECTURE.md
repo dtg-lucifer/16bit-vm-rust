@@ -92,6 +92,10 @@ function execute_instruction(opcode, argument):
             reg2 = (argument >> 4) & 0x0F
             registers[reg1] = registers[reg1] + registers[reg2]
 
+        case 0x05:  # SIGNAL
+            # Signal with a specific code (can be used for halting or I/O)
+            execute_signal(argument)
+
         case _:
             raise_error("Invalid opcode")
 ```
@@ -297,3 +301,56 @@ When implementing the VM, consider:
 4. **Instruction Timing**: For more realistic emulation, model instruction timing
 
 This document serves as a high-level guide to the VM architecture. The actual implementation may have additional details and optimizations.
+
+## Assembly Language Support
+
+The VM includes an assembler that translates human-readable assembly code into machine code bytecode. This makes it easier to write programs for the VM without having to manually encode the binary instructions.
+
+### Assembly Syntax
+
+The assembler supports the following instruction formats:
+
+```
+PUSH #10    ; Push decimal value 10 onto the stack
+PUSH $0A    ; Push hexadecimal value 0A (10) onto the stack
+POP A       ; Pop value from stack into register A
+POP B       ; Pop value from stack into register B
+POP C       ; Pop value from stack into register C
+ADDS        ; Add top two stack values, push result
+SIG $09     ; Signal with hexadecimal code 09
+```
+
+### Assembler Usage
+
+The assembler reads assembly instructions from a file and outputs the corresponding bytecode:
+
+```
+cargo run --bin asm -- your_program_asm > program.hex
+```
+
+### Example Assembly Program
+
+Here's a complete example program that adds two numbers and stores the result in Register B:
+
+```
+; Add two numbers and store in Register B
+PUSH #10    ; Push 10 onto stack
+PUSH #20    ; Push 20 onto stack
+ADDS        ; Add: 10 + 20 = 30
+POP B       ; Store result (30) in Register B
+SIG $09     ; Signal to halt the VM
+```
+
+This assembly code would be translated into the following bytecode:
+
+```
+01 0A 01 14 03 00 02 01 05 09
+```
+
+Where:
+
+- `01 0A` = PUSH 10
+- `01 14` = PUSH 20
+- `03 00` = ADDSTACK
+- `02 01` = POP to Register B
+- `05 09` = SIGNAL 09 (halt)
