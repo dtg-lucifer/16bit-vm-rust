@@ -372,9 +372,6 @@ SIG $09     ; Signal to halt the VM
 # Compile assembly file to hexadecimal bytecode
 cargo run --bin asm -- prog/your_program_asm > output.hex
 
-# Convert hexadecimal bytecode to binary
-cargo run --bin bin -- prog/your_program > output.bin
-
 # Run the VM with your program
 cargo run --bin vm -- output.bin
 ```
