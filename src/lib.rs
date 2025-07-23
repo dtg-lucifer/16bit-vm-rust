@@ -11,6 +11,23 @@
 //! - Stack-based operation model
 //! - Simple instruction set
 //!
+//! ## Instruction Set
+//!
+//! The VM supports the following operations:
+//! - `NOP` - No operation
+//! - `PUSH` - Push 8-bit value onto stack
+//! - `POPREGISTER` - Pop value from stack into register
+//! - `ADDSTACK` - Pop two values, add them, push result
+//! - `ADDREGISTER` - Add two registers, store in first register
+//! - `SIGNAL` - Send a signal to the VM (for halting, I/O, etc.)
+//!
+//! ## Components
+//!
+//! - **VM Core** - The main virtual machine implementation
+//! - **Memory** - Addressable memory space implementation
+//! - **Assembler** - Converts assembly language to bytecode
+//! - **VM Runner** - Binary for executing programs on the VM
+//!
 //! ## Usage
 //!
 //! ```
