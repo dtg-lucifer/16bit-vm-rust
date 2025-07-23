@@ -1,5 +1,40 @@
+//! Assembler module for Rusty 16-bit VM.
+//!
+//! This module provides functionality to parse assembly language instructions
+//! and convert them to the corresponding bytecode for the VM.
+//!
+//! # Assembly Language Format
+//!
+//! The assembler supports the following instructions:
+//! - `PUSH #n` - Push decimal value n onto stack
+//! - `PUSH $n` - Push hexadecimal value n onto stack
+//! - `POP reg` - Pop value from stack into register
+//! - `ADDS` - Add top two values on stack and push result
+//! - `SIG $n` - Signal the VM with code n
+//!
+//! # Example
+//!
+//! ```
+//! PUSH #10    ; Push decimal 10
+//! PUSH #20    ; Push decimal 20
+//! ADDS        ; Add: 10 + 20 = 30
+//! POP A       ; Store result in Register A
+//! SIG $09     ; Halt signal
+//! ```
+
 use rustyvm::{Op, Register};
 
+/// Parses a vector of instruction parts into bytecode.
+///
+/// This function converts assembly instructions (split into parts) into
+/// the corresponding bytecode that can be executed by the VM.
+///
+/// # Parameters
+/// * `parts` - Vector of instruction parts (e.g., ["PUSH", "#10"])
+///
+/// # Returns
+/// * `Ok(Vec<u8>)` - Vector of bytecode if parsing was successful
+/// * `Err(String)` - Error message if parsing failed
 pub fn parse_parts(parts: Vec<&str>) -> Result<Vec<u8>, String> {
     let mut outputs: Vec<u8> = Vec::new();
     let mut i = 0;
@@ -80,10 +115,26 @@ pub fn parse_parts(parts: Vec<&str>) -> Result<Vec<u8>, String> {
     Ok(outputs)
 }
 
+/// Parses a decimal string into an 8-bit unsigned integer.
+///
+/// # Parameters
+/// * `s` - String representing a decimal number
+///
+/// # Returns
+/// * `Ok(u8)` - The parsed 8-bit value
+/// * `Err(String)` - Error message if parsing failed
 fn parse_decimal(s: &str) -> Result<u8, String> {
     u8::from_str_radix(s, 10).map_err(|e| format!("Failed to parse '{}' as decimal: {}", s, e))
 }
 
+/// Parses a hexadecimal string into an 8-bit unsigned integer.
+///
+/// # Parameters
+/// * `s` - String representing a hexadecimal number
+///
+/// # Returns
+/// * `Ok(u8)` - The parsed 8-bit value
+/// * `Err(String)` - Error message if parsing failed
 fn parse_hexadecimal(s: &str) -> Result<u8, String> {
     u8::from_str_radix(s, 16).map_err(|e| format!("Failed to parse '{}' as hexadecimal: {}", s, e))
 }

@@ -1,0 +1,18 @@
+// Project-local debug tasks
+//
+// For more documentation on how to configure debug tasks,
+// see:
+[
+    {
+        "label": "Debug Assembler",
+        "adapter": "CodeLLDB",
+        "request": "launch",
+        "build": {
+            "command": "cargo",
+            "args": ["build", "--bin", "asm"]
+        },
+        "program": "${ZED_WORKTREE_ROOT}/target/debug/asm",
+        "args": ["./prog/add_asm"],
+        "sourceLanguages": ["rust"]
+    }
+]
