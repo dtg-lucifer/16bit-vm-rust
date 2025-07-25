@@ -51,5 +51,9 @@ format:
 	cargo fmt -- --config-path .rustfmt.toml
 .PHONY: format
 
+test:
+	cargo test
+.PHONY: test
+
 watch: gen-bin $(PROGRAM_SOURCES) $(PROGRAM_ASSEMBLY)
 	$(RC) $(R_WATCH_FLAGS) $(R_WATCH_COMMAND)

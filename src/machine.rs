@@ -16,7 +16,7 @@ use crate::memory::{Addressable, LinearMemory};
 /// - PC: Program Counter (points to next instruction)
 /// - BP: Base Pointer (for function calls/stack frames)
 /// - FLAGS: Status flags register
-#[derive(Debug)]
+#[derive(Debug, PartialEq, Eq, Clone, Copy)]
 #[repr(u8)]
 pub enum Register {
     /// General purpose register A (index 0)
@@ -80,7 +80,7 @@ impl Register {
 /// Each operation corresponds to a specific instruction opcode.
 /// Some operations include parameters that provide additional information
 /// about how the operation should be performed.
-#[derive(Debug)]
+#[derive(Debug, PartialEq, Eq, Clone)]
 #[repr(u8)]
 /// Operations supported by the VM.
 ///
@@ -90,13 +90,7 @@ impl Register {
 ///
 /// # Instruction Format
 ///
-/// ```
-/// +------------+------------+
-/// | Byte 0     | Byte 1     |
-/// +------------+------------+
-/// | OPCODE     | ARGUMENT   |
-/// +------------+------------+
-/// ```
+/// Each instruction is 2 bytes: OPCODE (Byte 0) and ARGUMENT (Byte 1)
 ///
 /// # Opcodes
 ///
@@ -155,15 +149,10 @@ impl Op {
 /// Parses a 16-bit instruction and extracts the 8-bit argument.
 ///
 /// When instructions are loaded in memory, they are stored as:
-/// ```
-/// Memory[addr]   = OPCODE (8 bits)
-/// Memory[addr+1] = ARGUMENT (8 bits)
-/// ```
+/// OPCODE in Memory[addr] and ARGUMENT in Memory[addr+1]
 ///
 /// When read as a 16-bit value using little-endian format, they become:
-/// ```
-/// 16-bit value = ARGUMENT (upper 8 bits) | OPCODE (lower 8 bits)
-/// ```
+/// 16-bit value with ARGUMENT in upper 8 bits and OPCODE in lower 8 bits
 ///
 /// # Parameters
 /// * `ins` - The 16-bit instruction to parse
@@ -177,16 +166,10 @@ fn parse_instructions_arg(ins: u16) -> u8 {
 /// Parses a 16-bit instruction into an operation.
 ///
 /// In memory, instructions are stored as two consecutive bytes:
-/// ```
-/// [Address N]   : OPCODE (8 bits)
-/// [Address N+1] : ARGUMENT (8 bits)
-/// ```
+/// OPCODE (8 bits) at Address N, followed by ARGUMENT (8 bits) at Address N+1
 ///
 /// When read as a 16-bit value using little-endian format, they become:
-/// ```
-/// 16-bit value = [ ARGUMENT (8 bits) | OPCODE (8 bits) ]
-///                 (upper 8 bits)      (lower 8 bits)
-/// ```
+/// 16-bit value with ARGUMENT in upper 8 bits and OPCODE in lower 8 bits
 ///
 /// This function extracts the opcode (lower 8 bits) from the instruction
 /// and returns the corresponding operation with its argument.
@@ -224,6 +207,7 @@ fn parse_instructions(ins: u16) -> Result<Op, String> {
 /// # Example
 ///
 /// ```
+/// # use rustyvm::Machine;
 /// fn halt_signal(vm: &mut Machine) -> Result<(), String> {
 ///     vm.halt = true;
 ///     Ok(())
@@ -330,16 +314,7 @@ impl Machine {
     ///
     /// # Stack Memory Layout
     ///
-    /// ```
-    /// Before pop:              After pop (value=0x1234):
-    /// +-------------+          +-------------+
-    /// | 0x1004 (SP) |          | 0x1002 (SP) |
-    /// +-------------+          +-------------+
-    /// | 0x1002      | 0x1234   | 0x1002      | 0x1234
-    /// +-------------+          +-------------+
-    /// | 0x1000      | ...      | 0x1000      | ...
-    /// +-------------+          +-------------+
-    /// ```
+    /// For pop: First decrement SP by 2, then read the value at the new SP location
     ///
     /// # Returns
     /// * `Ok(u16)` - The popped value
@@ -373,16 +348,7 @@ impl Machine {
     ///
     /// # Stack Memory Layout
     ///
-    /// ```
-    /// Before push:             After push (value=0x5678):
-    /// +-------------+          +-------------+
-    /// | 0x1002 (SP) |          | 0x1004 (SP) |
-    /// +-------------+          +-------------+
-    /// | 0x1002      | ???      | 0x1002      | 0x5678
-    /// +-------------+          +-------------+
-    /// | 0x1000      | 0x1234   | 0x1000      | 0x1234
-    /// +-------------+          +-------------+
-    /// ```
+    /// For push: First write at current SP, then increment SP by 2
     ///
     /// # Parameters
     /// * `v` - The 16-bit value to push
@@ -461,9 +427,7 @@ impl Machine {
     ///
     /// # Execution Flow
     ///
-    /// ```
-    /// Fetch instruction → Increment PC → Parse instruction → Execute operation
-    /// ```
+    /// Fetch instruction, then increment PC, parse instruction, and execute operation
     ///
     /// # Returns
     /// * `Ok(())` - If the instruction executed successfully

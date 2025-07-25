@@ -7,20 +7,12 @@
 //!
 //! The VM has 8 KB (8192 bytes) of memory laid out as follows:
 //!
-//! ```
-//! +------------------------+ 0x0000
-//! |                        |
-//! |    Program Memory      |
-//! |                        |
-//! +------------------------+ ~0x1000
-//! |                        |
-//! |    Stack Memory        |
-//! |  (grows upward)        |
-//! |                        |
-//! +------------------------+ 0x1FFF
-//! ```
+//! Memory Layout:
+//! - Program Memory: Starting at address 0x0000
+//! - Stack Memory: Starting at address 0x1000 (grows upward)
+//! - Memory Size: 8192 bytes (ends at 0x1FFF)
 //!
-//! # Memory Access
+//! ## Memory Access
 //!
 //! The VM provides both 8-bit and 16-bit memory access operations.
 //! For 16-bit operations, the VM uses little-endian byte order.
@@ -58,17 +50,15 @@ pub trait Addressable {
     /// The VM uses little-endian format (lower byte first).
     ///
     /// # Memory Layout for 16-bit Values (Little-Endian)
-    /// ```
+    ///
     /// Address N:   Lower byte (least significant byte)
     /// Address N+1: Upper byte (most significant byte)
-    /// ```
     ///
     /// # Example
     /// For the 16-bit value 0x1234:
-    /// ```
+    ///
     /// memory[addr]   = 0x34 (lower byte)
     /// memory[addr+1] = 0x12 (upper byte)
-    /// ```
     ///
     /// When read with read2(), this returns the 16-bit value 0x1234.
     ///
@@ -93,17 +83,15 @@ pub trait Addressable {
     /// The VM uses little-endian format (lower byte first).
     ///
     /// # Memory Layout for 16-bit Values (Little-Endian)
-    /// ```
+    ///
     /// Address N:   Lower byte (least significant byte)
     /// Address N+1: Upper byte (most significant byte)
-    /// ```
     ///
     /// # Example
     /// For the 16-bit value 0x1234:
-    /// ```
+    ///
     /// memory[addr]   = 0x34 (lower byte)
     /// memory[addr+1] = 0x12 (upper byte)
-    /// ```
     ///
     /// # Parameters
     /// * `addr` - The memory address to write to (16-bit)
@@ -140,13 +128,15 @@ pub trait Addressable {
     /// # Example
     ///
     /// ```
-    /// // Copy 10 bytes from address 0x10 to address 0x20
+    /// # use rustyvm::LinearMemory;
+    /// # use rustyvm::Addressable;
+    /// # let mut memory = LinearMemory::new(1024);
     /// memory.copy(0x10, 0x20, 10);
     /// ```
-    fn copy(&mut self, from: u8, to: u8, n: usize) -> bool {
+    fn copy(&mut self, from: u16, to: u16, n: usize) -> bool {
         for i in 0..n {
-            if let Some(x) = self.read((from + (i as u8)).into()) {
-                if !self.write((to + (i as u8)).into(), x) {
+            if let Some(x) = self.read(from + (i as u16)) {
+                if !self.write(to + (i as u16), x) {
                     return false;
                 }
             } else {
@@ -176,8 +166,11 @@ pub trait Addressable {
     /// # Example
     ///
     /// ```
+    /// # use rustyvm::LinearMemory;
+    /// # use rustyvm::Addressable;
+    /// # let mut memory = LinearMemory::new(1024);
     /// let program = vec![0x01, 0x0A, 0x01, 0x08, 0x03, 0x00];  // PUSH 10, PUSH 8, ADDSTACK
-    /// if let Some((bytes, instructions)) = vm.memory.load_from_vec(&program, 0) {
+    /// if let Some((bytes, instructions)) = memory.load_from_vec(&program, 0) {
     ///     println!("Loaded {} bytes ({} instructions)", bytes, instructions);
     /// }
     /// ```
@@ -206,9 +199,11 @@ pub trait Addressable {
 /// In the default VM configuration, this is 8 KB (8192 bytes).
 ///
 /// # Usage
+/// # Example
 ///
 /// ```
-/// let memory_size = 8 * 1024;  // 8 KB
+/// # use rustyvm::LinearMemory;
+/// let memory_size = 1024;
 /// let memory = LinearMemory::new(memory_size);
 /// ```
 pub struct LinearMemory {
@@ -232,8 +227,9 @@ impl LinearMemory {
     /// # Example
     ///
     /// ```
-    /// // Create an 8 KB memory space
-    /// let memory = LinearMemory::new(8 * 1024);
+    /// # use rustyvm::LinearMemory;
+    /// // Create a 64KB memory
+    /// let memory = LinearMemory::new(64 * 1024);
     /// ```
     pub fn new(n: usize) -> Self {
         Self {
@@ -258,14 +254,23 @@ impl Addressable for LinearMemory {
     /// # Example
     ///
     /// ```
-    /// // Read a single byte from address 0x0100
+    /// # use rustyvm::LinearMemory;
+    /// # use rustyvm::Addressable;
+    /// # let memory = LinearMemory::new(1024);
     /// if let Some(value) = memory.read(0x0100) {
-    ///     println!("Value at 0x0100: {}", value);
+    ///     println!("Value at 0x0100: 0x{:02X}", value);
     /// }
+    /// ```
     ///
-    /// // For instruction bytes at address 0:
-    /// // Memory[0] contains the opcode (e.g., 0x01 for PUSH)
-    /// // Memory[1] contains the argument (e.g., 0x0A for value 10)
+    ///
+    /// For instruction bytes at address 0:
+    /// Memory[0] contains the opcode (e.g., 0x01 for PUSH)
+    /// Memory[1] contains the argument (e.g., 0x42 for value)
+    ///
+    /// ```
+    /// # use rustyvm::LinearMemory;
+    /// # use rustyvm::Addressable;
+    /// # let mut memory = LinearMemory::new(1024);
     /// ```
     fn read(&self, addr: u16) -> Option<u8> {
         if (addr as usize) < self.size {
@@ -290,7 +295,9 @@ impl Addressable for LinearMemory {
     /// # Example
     ///
     /// ```
-    /// // Write value 0x42 to address 0x0100
+    /// # use rustyvm::LinearMemory;
+    /// # use rustyvm::Addressable;
+    /// # let mut memory = LinearMemory::new(1024);
     /// if memory.write(0x0100, 0x42) {
     ///     println!("Write successful");
     /// }
