@@ -62,6 +62,12 @@ pub mod machine;
 /// Memory module provides the memory system for the VM.
 pub mod memory;
 
-// Re-export key components for easier access
+/// Re-export key components for easier access
 pub use crate::machine::*;
 pub use crate::memory::*;
+
+// Include test modules
+#[cfg(test)]
+mod machine_test;
+#[cfg(test)]
+mod memory_test;
