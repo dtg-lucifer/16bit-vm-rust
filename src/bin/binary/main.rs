@@ -1,29 +1,6 @@
 //! Binary converter for the Rusty 16-bit VM.
 //!
-//! This program reads a text file containing hexadecimal values and converts them
-//! into a binary format that can be executed by the VM.
-//!
-//! # Usage
-//!
-//! ```
-//! cargo run --bin bin -- path/to/hexfile > output.bin
-//! ```
-//!
-//! # Input Format
-//!
-//! The input file should contain space-separated hexadecimal values (00-FF).
-//! Each value represents one byte of the program.
-//!
-//! Example:
-//! ```
-//! 01 0A 01 08 03 00 02 00 05 09
-//! ```
-//! This represents:
-//! - PUSH 10
-//! - PUSH 8
-//! - ADDSTACK
-//! - POP to register A
-//! - SIGNAL 9 (halt)
+//! Converts hexadecimal text values to binary format.
 
 use std::{
     env,
@@ -33,20 +10,7 @@ use std::{
 };
 
 /// Main entry point for the binary converter.
-///
-/// This function:
-/// 1. Reads a text file containing hexadecimal values
-/// 2. Converts each hex value to a binary byte
-/// 3. Outputs the binary data to stdout
-///
-/// # Arguments
-///
-/// * First argument: Path to the input file with hex values
-///
-/// # Returns
-///
-/// * `Ok(())` - If conversion was successful
-/// * `Err(String)` - Error message if any step failed
+/// Reads hex values from a file, converts to binary, outputs to stdout.
 fn main() -> Result<(), String> {
     let args: Vec<_> = env::args().collect();
     if args.len() != 2 {
@@ -60,15 +24,7 @@ fn main() -> Result<(), String> {
         Ok(f) => f,
     };
 
-    // Process:
-    // 1. Read the file line by line
-    //
-    // 2. For each line break that into multiple parts
-    // divided by spaces
-    //
-    // 3. Each part should be a hexadecimal value (00-FF)
-    //
-    // 4. Parse them into binary bytes
+    // Process the file and convert hex values to binary bytes
 
     let lines: Vec<String> = match BufReader::new(file).lines().collect() {
         Ok(lines) => lines,
