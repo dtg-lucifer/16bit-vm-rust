@@ -38,6 +38,30 @@ pub fn parse_parts(parts: Vec<&str>) -> Result<Vec<u8>, String> {
                 i += 1;
                 continue;
             }
+            "ADDR" => {
+                outputs.push(Op::AddRegister(Register::A, Register::B).value());
+                if i + 2 < parts.len() {
+                    let reg1 = parts[i + 1];
+                    let reg2 = parts[i + 2];
+
+                    // Parse register name to its enum value
+                    let reg1 = Register::from_str(reg1)
+                        .map_err(|_| format!("Invalid register name: {}", reg1))?;
+                    let reg2 = Register::from_str(reg2)
+                        .map_err(|_| format!("Invalid register name: {}", reg2))?;
+
+                    // Push the enum discriminant value (0 for A, 1 for B, etc.)
+                    //
+                    // Mash the two register addres into 8 bit so the total length
+                    // of the instruction will stay at 16bit
+                    let m_r = (reg1 as u8) << 4 | (reg2 as u8);
+                    outputs.push(m_r);
+                    i += 3; // Skip the registers we just processed
+                    continue;
+                } else {
+                    return Err(format!("Missing register for ADDR instruction"));
+                }
+            }
             "POP" => {
                 outputs.push(Op::PopRegister(Register::A).value());
                 if i + 1 < parts.len() {

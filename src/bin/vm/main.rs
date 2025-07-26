@@ -45,18 +45,9 @@ fn main() -> Result<(), String> {
 
     let r = reader.read_to_end(&mut buffer);
     match r {
-        Ok(s) => println!("Program: read {s} bytes from the file"),
+        Ok(_) => println!("Program: read successfully!"),
         Err(e) => panic!("Error: cannot read, err = {e}"),
     }
-
-    println!("Program: loaded program = {:?}", buffer);
-
-    // Print the loaded program in hexadecimal format for better readability
-    print!("Program: loaded program (hex) = [");
-    for b in &buffer {
-        print!("{b:02X}, ");
-    }
-    print!("]\n");
 
     // Load the program into memory at address 0
     if let Some((bytes, instructions)) = vm.memory.load_from_vec(&buffer, 0) {

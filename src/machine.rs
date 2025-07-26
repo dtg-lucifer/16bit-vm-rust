@@ -10,21 +10,21 @@ use crate::memory::{Addressable, LinearMemory};
 #[repr(u8)]
 pub enum Register {
     /// General purpose register A (index 0)
-    A,
+    A = 0x00,
     /// General purpose register B (index 1)
-    B,
+    B = 0x01,
     /// General purpose register C (index 2)
-    C,
+    C = 0x02,
     /// Memory operations register (index 3)
-    M,
+    M = 0x03,
     /// Stack Pointer register - points to next available stack location (index 4)
-    SP,
+    SP = 0x04,
     /// Program Counter register - points to next instruction (index 5)
-    PC,
+    PC = 0x05,
     /// Base Pointer register - for stack frames (index 6)
-    BP,
+    BP = 0x06,
     /// Status flags register (index 7)
-    FLAGS,
+    FLAGS = 0x07,
 }
 
 impl Register {
@@ -67,21 +67,21 @@ impl Register {
 #[repr(u8)]
 pub enum Op {
     /// No operation (opcode 0x00)
-    Nop,
+    Nop = 0x00,
     /// Push a value onto the stack (opcode 0x01)
     /// Parameter: 8-bit value to push
-    Push(u8),
+    Push(u8) = 0x01,
     /// Pop a value from the stack into a register (opcode 0x02)
     /// Parameter: destination register
-    PopRegister(Register),
+    PopRegister(Register) = 0x02,
     /// Add top two values on stack, push result (opcode 0x03)
-    AddStack,
+    AddStack = 0x03,
     /// Add two registers, store result in first register (opcode 0x04)
     /// Parameters: destination register, source register
-    AddRegister(Register, Register),
+    AddRegister(Register, Register) = 0x04,
     /// Signal returns the Signal (opcode 0x05)
     /// Parameters: signal integer
-    Signal(u8),
+    Signal(u8) = 0x05,
 }
 
 /// Implementation of operation-related functionality.
@@ -119,6 +119,16 @@ fn parse_instructions(ins: u16) -> Result<Op, String> {
             Register::from_u8(arg)
                 .ok_or(format!("unknown register - 0x{:X}", arg))
                 .map(|r| Op::PopRegister(r))
+        }
+        x if x == Op::AddRegister(Register::A, Register::A).value() => {
+            let arg = parse_instructions_arg(ins);
+            // The first byte is the opcode
+            // The second byte is divided into two 4 bit parts to store 2 register address
+            let reg1 = (arg >> 4) & 0x0F; // Upper 4 bits
+            let reg2 = arg & 0x0F; // Lower 4 bits
+            let r1 = Register::from_u8(reg1).ok_or(format!("unknown register - 0x{:X}", reg1))?;
+            let r2 = Register::from_u8(reg2).ok_or(format!("unknown register - 0x{:X}", reg2))?;
+            Ok(Op::AddRegister(r1, r2))
         }
         x if x == Op::AddStack.value() => Ok(Op::AddStack),
         x if x == Op::Signal(0).value() => Ok(Op::Signal(parse_instructions_arg(ins))),
