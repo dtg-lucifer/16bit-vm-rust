@@ -16,4 +16,4 @@ name = "vm"
 name = "asm"
 
 [[bin]]
-name = "bin"
+name = "binary"
