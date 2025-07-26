@@ -1,17 +1,4 @@
 //! Assembler binary for the Rusty 16-bit VM.
-//!
-//! This binary provides functionality to convert assembly language source files
-//! into bytecode that can be executed by the VM.
-//!
-//! # Usage
-//!
-//! ```
-//! cargo run --bin asm -- path/to/assembly_file > output.hex
-//! ```
-//!
-//! # Assembly Format
-//!
-//! See the `asm` module documentation for the supported assembly syntax.
 
 pub mod asm;
 
@@ -23,21 +10,7 @@ use std::{
 };
 
 /// Main function for the assembler binary.
-///
-/// This function:
-/// 1. Reads an assembly source file
-/// 2. Parses the assembly instructions
-/// 3. Converts them to bytecode
-/// 4. Outputs the bytecode to stdout
-///
-/// # Arguments
-///
-/// * First argument: Path to the assembly source file
-///
-/// # Returns
-///
-/// * `Ok(())` - If assembly and bytecode generation was successful
-/// * `Err(String)` - Error message if any step failed
+/// Reads an assembly source file, converts to bytecode, outputs to stdout.
 fn main() -> Result<(), String> {
     let args: Vec<_> = env::args().collect();
     if args.len() != 2 {
@@ -51,15 +24,7 @@ fn main() -> Result<(), String> {
         Ok(f) => f,
     };
 
-    // Process:
-    // 1. Read the file line by line
-    //
-    // 2. For each line break that into multiple parts
-    // divided by spaces
-    //
-    // 3. Each part will be a specific operator or operand
-    //
-    // 4. Parse them into bytecode (opcodes and arguments)
+    // Process the file line by line and convert to bytecode
 
     let lines: Vec<String> = match BufReader::new(file).lines().collect() {
         Ok(lines) => lines,

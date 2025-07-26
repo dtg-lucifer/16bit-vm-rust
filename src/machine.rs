@@ -1,21 +1,11 @@
 //! VM core implementation for the 16-bit Virtual Machine.
-//!
-//! This module contains the core components of the virtual machine:
-//! registers, operations, instruction parsing, and execution logic.
 
 use std::collections::HashMap;
 
 use crate::memory::{Addressable, LinearMemory};
 
 /// Register set for the 16-bit VM.
-///
-/// Each register is 16 bits (2 bytes) wide and serves a specific purpose:
-/// - A, B, C: General purpose registers
-/// - M: Memory operations register
-/// - SP: Stack Pointer (grows upward, points to next free location)
-/// - PC: Program Counter (points to next instruction)
-/// - BP: Base Pointer (for function calls/stack frames)
-/// - FLAGS: Status flags register
+/// Each register is 16 bits (2 bytes) wide.
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
 #[repr(u8)]
 pub enum Register {
@@ -39,13 +29,6 @@ pub enum Register {
 
 impl Register {
     /// Converts a numeric value to a register enum.
-    ///
-    /// # Parameters
-    /// * `v` - Numeric value representing a register
-    ///
-    /// # Returns
-    /// * `Some(Register)` - If the value corresponds to a valid register
-    /// * `None` - If the value does not match any register
     pub fn from_u8(v: u8) -> Option<Self> {
         match v {
             x if x == Register::A as u8 => Some(Register::A),
@@ -78,28 +61,10 @@ impl Register {
 /// Operations supported by the VM.
 ///
 /// Each operation corresponds to a specific instruction opcode.
-/// Some operations include parameters that provide additional information
-/// about how the operation should be performed.
-#[derive(Debug, PartialEq, Eq, Clone)]
-#[repr(u8)]
-/// Operations supported by the VM.
-///
-/// Each operation corresponds to a specific instruction opcode.
 /// The VM uses a 2-byte instruction format, where the first byte is the opcode
 /// and the second byte is an argument (when applicable).
-///
-/// # Instruction Format
-///
-/// Each instruction is 2 bytes: OPCODE (Byte 0) and ARGUMENT (Byte 1)
-///
-/// # Opcodes
-///
-/// - 0x00: NOP - No operation
-/// - 0x01: PUSH - Push value onto stack
-/// - 0x02: POPREGISTER - Pop value from stack into register
-/// - 0x03: ADDSTACK - Add stack values
-/// - 0x04: ADDREGISTER - Add register values
-/// - 0x05: SIGNAL - Signal the VM
+#[derive(Debug, PartialEq, Eq, Clone)]
+#[repr(u8)]
 pub enum Op {
     /// No operation (opcode 0x00)
     Nop,
@@ -123,63 +88,26 @@ pub enum Op {
 impl Op {
     /// Gets the numeric opcode value for this operation.
     ///
-    /// # Returns
-    /// The 8-bit opcode value
-    ///
     /// # Safety
-    /// This function uses unsafe code to extract the discriminant value
-    /// of the enum variant. The #[repr(u8)] attribute ensures this is valid.
+    /// Uses unsafe code to extract the enum discriminant value
     pub fn value(&self) -> u8 {
         unsafe { *<*const _>::from(self).cast::<u8>() }
     }
 
     /// Checks if a numeric opcode matches a specific operation.
-    ///
-    /// # Parameters
-    /// * `x` - Numeric opcode to check
-    /// * `other` - Operation to compare against
-    ///
-    /// # Returns
-    /// `true` if the opcode matches the operation, `false` otherwise
     pub fn equals(x: u8, other: Self) -> bool {
         x == other.value()
     }
 }
 
 /// Parses a 16-bit instruction and extracts the 8-bit argument.
-///
-/// When instructions are loaded in memory, they are stored as:
-/// OPCODE in Memory[addr] and ARGUMENT in Memory[addr+1]
-///
-/// When read as a 16-bit value using little-endian format, they become:
-/// 16-bit value with ARGUMENT in upper 8 bits and OPCODE in lower 8 bits
-///
-/// # Parameters
-/// * `ins` - The 16-bit instruction to parse
-///
-/// # Returns
-/// * `u8` - The 8-bit argument portion of the instruction
+/// Uses little-endian format with ARGUMENT in upper 8 bits and OPCODE in lower 8 bits
 fn parse_instructions_arg(ins: u16) -> u8 {
     ((ins & 0xff00) >> 8) as u8
 }
 
 /// Parses a 16-bit instruction into an operation.
-///
-/// In memory, instructions are stored as two consecutive bytes:
-/// OPCODE (8 bits) at Address N, followed by ARGUMENT (8 bits) at Address N+1
-///
-/// When read as a 16-bit value using little-endian format, they become:
-/// 16-bit value with ARGUMENT in upper 8 bits and OPCODE in lower 8 bits
-///
-/// This function extracts the opcode (lower 8 bits) from the instruction
-/// and returns the corresponding operation with its argument.
-///
-/// # Parameters
-/// * `ins` - The 16-bit instruction to parse
-///
-/// # Returns
-/// * `Ok(Op)` - The parsed operation if successful
-/// * `Err(String)` - Error message if the instruction contains an invalid opcode or argument
+/// Extracts the opcode (lower 8 bits) and returns the corresponding operation.
 fn parse_instructions(ins: u16) -> Result<Op, String> {
     let op = (ins & 0xff) as u8;
 
@@ -200,38 +128,13 @@ fn parse_instructions(ins: u16) -> Result<Op, String> {
 }
 
 /// Function type for signal handlers in the VM.
-///
-/// Signal handlers are called when the VM executes a SIGNAL instruction.
-/// They take a mutable reference to the machine and return a Result.
-///
-/// # Example
-///
-/// ```
-/// # use rustyvm::Machine;
-/// fn halt_signal(vm: &mut Machine) -> Result<(), String> {
-///     vm.halt = true;
-///     Ok(())
-/// }
-/// ```
+/// Called when the VM executes a SIGNAL instruction.
 type SignalFunction = fn(&mut Machine) -> Result<(), String>;
 
 /// The main virtual machine structure.
 ///
 /// This struct represents the entire virtual machine, containing
-/// registers and memory. It provides methods for executing instructions
-/// and manipulating the VM state.
-/// The main virtual machine structure.
-///
-/// This struct represents the entire virtual machine, containing
-/// registers, memory, and state information. It provides methods for
-/// executing instructions and manipulating the VM state.
-///
-/// # Fields
-///
-/// * `registers` - Array of 8 16-bit registers (A, B, C, M, SP, PC, BP, FLAGS)
-/// * `halt` - Boolean flag indicating whether the VM is halted
-/// * `signal_handlers` - Map of signal codes to handler functions
-/// * `memory` - VM memory space (implements the Addressable trait)
+/// registers, memory, and state information.
 pub struct Machine {
     /// The VM's register set (8 registers, each 16 bits)
     pub registers: [u16; 8],
@@ -245,16 +148,9 @@ pub struct Machine {
 
 impl Machine {
     /// Creates a new virtual machine with initialized state.
-    ///
-    /// Initializes an 8 KB memory space and sets up the registers:
-    /// - SP (Stack Pointer) is set to 0x1000
-    /// - PC (Program Counter) is set to 0
-    /// - All other registers are initialized to 0
-    ///
-    /// # Returns
-    /// A new Machine instance ready for use
+    /// SP starts at 0x1000, PC at 0, all other registers at 0
     pub fn new() -> Self {
-        let memory_size = 8 * 1024; // 8 KB
+        let memory_size = 8 * 1024; // -> 8 KB
         let mut machine = Self {
             registers: [0; 8],
             halt: false,
@@ -271,54 +167,19 @@ impl Machine {
     }
 
     /// Gets the value of a specific register.
-    ///
-    /// # Parameters
-    /// * `r` - The register to read
-    ///
-    /// # Returns
-    /// The 16-bit value stored in the register
     pub fn get_register(&self, r: Register) -> u16 {
         self.registers[r as usize]
     }
 
-    /// Sets the signal handler for specific signals
-    ///
-    /// This method:
-    /// - Sets the behaviour of different signals
-    /// - Gives the user full controll over the signals
     /// Defines a signal handler for a specific signal code.
-    ///
-    /// Signal handlers are functions that are called when the VM executes
-    /// a SIGNAL instruction with the corresponding code.
-    ///
-    /// # Parameters
-    ///
-    /// * `index` - The 8-bit signal code to handle
-    /// * `f` - The handler function to call when the signal is received
+    /// Called when the VM executes a SIGNAL instruction with the matching code.
     pub fn define_handler(&mut self, index: u8, f: SignalFunction) {
         self.signal_handlers.insert(index, f);
     }
 
     /// Pops a 16-bit value from the stack.
-    ///
-    /// Stack operation: First decrement SP by 2, then read the value.
-    /// If the memory read fails, SP is restored to its original value.
-    ///
-    /// # Returns
-    /// * `Ok(u16)` - The popped value
-    /// * `Err(String)` - Error message if the pop operation fails
-    /// Pops a 16-bit value from the stack.
-    ///
-    /// Stack operation: First decrement SP by 2, then read the value.
-    /// If the memory read fails, SP is restored to its original value.
-    ///
-    /// # Stack Memory Layout
-    ///
-    /// For pop: First decrement SP by 2, then read the value at the new SP location
-    ///
-    /// # Returns
-    /// * `Ok(u16)` - The popped value
-    /// * `Err(String)` - Error message if the pop operation fails
+    /// First decrement SP by 2, then read the value at the new SP location.
+    /// Restores SP on error.
     pub fn pop(&mut self) -> Result<u16, String> {
         // For pop, first decrement SP, then read
         self.registers[Register::SP as usize] -= 2;
@@ -333,29 +194,7 @@ impl Machine {
     }
 
     /// Pushes a 16-bit value onto the stack.
-    ///
-    /// Stack operation: First write the value at the current SP, then increment SP by 2.
-    ///
-    /// # Parameters
-    /// * `v` - The 16-bit value to push
-    ///
-    /// # Returns
-    /// * `Ok(())` - If the push was successful
-    /// * `Err(String)` - Error message if the push operation fails
-    /// Pushes a 16-bit value onto the stack.
-    ///
-    /// Stack operation: First write the value at the current SP, then increment SP by 2.
-    ///
-    /// # Stack Memory Layout
-    ///
-    /// For push: First write at current SP, then increment SP by 2
-    ///
-    /// # Parameters
-    /// * `v` - The 16-bit value to push
-    ///
-    /// # Returns
-    /// * `Ok(())` - If the push was successful
-    /// * `Err(String)` - Error message if the push operation fails
+    /// First write at current SP, then increment SP by 2
     pub fn push(&mut self, v: u16) -> Result<(), String> {
         // For push, first write at current SP, then increment
         let sp = self.registers[Register::SP as usize];
@@ -366,16 +205,8 @@ impl Machine {
         Ok(())
     }
 
-    /// Print the current state of registers and pointers of the machine
     /// Prints the current state of the VM to the console.
-    ///
-    /// This method displays:
-    /// - Register values (both in hexadecimal and decimal)
-    /// - Stack pointer position
-    /// - Program counter position
-    ///
-    /// This is useful for debugging and for seeing the final state
-    /// after program execution.
+    /// Shows register values, stack pointer, and program counter.
     pub fn print_state(&self) {
         println!("-----------------------------------------------");
         println!("----------------Final State--------------------");
@@ -406,32 +237,9 @@ impl Machine {
 
     /// Executes a single instruction in the VM.
     ///
-    /// This method:
-    /// 1. Reads the next instruction from memory at PC
+    /// 1. Reads instruction from memory at PC
     /// 2. Increments PC by 2 (each instruction is 2 bytes)
-    /// 3. Parses the instruction
-    /// 4. Executes the operation
-    /// 5. Updates VM state accordingly
-    ///
-    /// # Returns
-    /// * `Ok(())` - If the instruction executed successfully
-    /// * `Err(String)` - Error message if execution failed
-    /// Executes a single instruction in the VM.
-    ///
-    /// This method:
-    /// 1. Reads the next instruction from memory at PC
-    /// 2. Increments PC by 2 (each instruction is 2 bytes)
-    /// 3. Parses the instruction into an operation
-    /// 4. Executes the operation
-    /// 5. Updates VM state accordingly
-    ///
-    /// # Execution Flow
-    ///
-    /// Fetch instruction, then increment PC, parse instruction, and execute operation
-    ///
-    /// # Returns
-    /// * `Ok(())` - If the instruction executed successfully
-    /// * `Err(String)` - Error message if execution failed (e.g., invalid instruction)
+    /// 3. Parses and executes the operation
     pub fn step(&mut self) -> Result<(), String> {
         let pc = self.registers[Register::PC as usize];
 
