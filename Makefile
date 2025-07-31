@@ -2,7 +2,7 @@ PROGRAM_DIR := prog
 PROGRAM_SOURCES := $(wildcard prog/*)
 PROGRAM_ASSEMBLY := $(wildcard prog/*_asm)
 PROGRAM_BINARY := prog.bin
-PROGRAM_HEX := prog.bin.hex
+PROGRAM_HEX := prog.hex
 
 RC := cargo
 R_RUN_FLAGS := run -q

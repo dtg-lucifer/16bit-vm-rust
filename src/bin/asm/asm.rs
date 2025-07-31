@@ -11,6 +11,12 @@ pub fn parse_parts(parts: Vec<&str>) -> Result<Vec<u8>, String> {
     let mut i = 0;
     while i < parts.len() {
         match parts[i] {
+            "NOP" => {
+                outputs.push(Op::Nop.value());
+                outputs.push(0); // NOP doesn't use the second byte, but we need it
+                i += 1;
+                continue;
+            }
             "PUSH" => {
                 outputs.push(Op::Push(0).value());
                 if i + 1 < parts.len() {
