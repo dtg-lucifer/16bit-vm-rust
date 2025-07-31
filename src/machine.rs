@@ -232,6 +232,11 @@ impl Machine {
                 Some(r) => format!("{:?}", r),
                 None => "Unknown".to_string(),
             };
+            if reg_name == "FLAGS" {
+                // Special case for FLAGS register
+                println!("\tFlags {}: 0b{:08b} ({})", reg_name, reg, reg);
+                continue;
+            }
             println!("\tRegister {}: 0x{:04X} ({})", reg_name, reg, reg);
         }
         println!(
@@ -275,10 +280,12 @@ impl Machine {
 
         // Debug output - consider making this optional or moving to a debug method
         println!(
-            "Instruction: opcode=0x{:02X}, arg=0x{:02X} @ PC={} => {op:?}",
-            opcode, arg, pc
+            "Instruction: opcode=0x{:02X}, arg=0x{:02X} @ PC={} => {op:?}, SP=0x{:04X}",
+            opcode,
+            arg,
+            pc,
+            self.registers[Register::SP as usize]
         );
-        println!("SP: 0x{:04X}", self.registers[Register::SP as usize]);
 
         // Execute the operation
         match op {
@@ -293,7 +300,6 @@ impl Machine {
                 let a = self.pop()?;
                 let b = self.pop()?;
                 let result = a + b;
-                println!("AddStack: {} + {} = {}", b, a, result);
                 self.push(result)?;
                 Ok(())
             }

@@ -37,13 +37,21 @@ fn main() -> Result<(), String> {
     let mut outputs: Vec<u8> = Vec::new();
 
     for l in lines {
-        // Skip empty lines or handle comments (lines that start with semicolon)
+        // Skip empty lines or handle full-line comments (lines that start with semicolon)
         if l.trim().is_empty() || l.trim_start().starts_with(';') {
             continue;
         }
 
+        // Split the line at the first semicolon to handle inline comments
+        let code_part = l.split(';').next().unwrap_or("").trim();
+
+        // If after removing comments the line is empty, skip it
+        if code_part.is_empty() {
+            continue;
+        }
+
         // Split by whitespace to properly handle multiple spaces
-        let parts: Vec<&str> = l.split_whitespace().collect();
+        let parts: Vec<&str> = code_part.split_whitespace().collect();
 
         // Skip empty parts array (blank lines)
         if parts.is_empty() {

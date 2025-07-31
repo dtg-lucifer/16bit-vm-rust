@@ -1,19 +1,31 @@
-PUSH #10
-PUSH #24
-ADDS
-POP B
-PUSH #5
-PUSH #22
-ADDS
-POP C
-PUSH #100
-POP A
-POP B
-PUSH #0
-POP A
-PUSH #10
-POP A
-PUSH #20
-POP B
-ADDR A B
-SIG $09
+; Demo program to test the ADDR instruction
+
+PUSH #10            ; push 10 onto the stack
+PUSH #24            ; push 24 onto the stack
+ADDS                ; add the top two values on the stack
+
+POP B               ; pop the result into B
+
+PUSH #5             ; push 5 onto the stack
+PUSH #22            ; push 22 onto the stack
+ADDS                ; add the top two values on the stack
+
+POP C               ; pop the result into C
+
+PUSH #100           ; push 100 onto the stack
+
+POP A               ; pop the value into A
+POP B               ; pop the value into B
+
+PUSH #10            ; push 10 onto the stack
+POP A               ; pop the value into A
+PUSH #20            ; push 20 onto the stack
+POP B               ; pop the value into B
+
+NOP                 ; do nothing
+NOP                 ; do nothing
+NOP                 ; do nothing
+
+ADDR A B            ; add the values in A and B, result in A
+
+SIG $09             ; signal to the monitor that the program is done
