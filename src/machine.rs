@@ -74,14 +74,17 @@ pub enum Op {
     /// Pop a value from the stack into a register (opcode 0x02)
     /// Parameter: destination register
     PopRegister(Register) = 0x02,
+    /// Push a register value onto the stack (opcode 0x03)
+    /// Parameter: register to push
+    PushRegister(Register) = 0x03,
     /// Add top two values on stack, push result (opcode 0x03)
-    AddStack = 0x03,
+    AddStack = 0x0f,
     /// Add two registers, store result in first register (opcode 0x04)
     /// Parameters: destination register, source register
-    AddRegister(Register, Register) = 0x04,
+    AddRegister(Register, Register) = 0xff,
     /// Signal returns the Signal (opcode 0x05)
     /// Parameters: signal integer
-    Signal(u8) = 0x05,
+    Signal(u8) = 0x09,
 }
 
 /// Implementation of operation-related functionality.
@@ -120,6 +123,12 @@ fn parse_instructions(ins: u16) -> Result<Op, String> {
                 .ok_or(format!("unknown register - 0x{:X}", arg))
                 .map(|r| Op::PopRegister(r))
         }
+        x if x == Op::PushRegister(Register::A).value() => {
+            let arg = parse_instructions_arg(ins);
+            Register::from_u8(arg)
+                .ok_or(format!("unknown register - 0x{:X}", arg))
+                .map(|r| Op::PushRegister(r))
+        }
         x if x == Op::AddRegister(Register::A, Register::A).value() => {
             let arg = parse_instructions_arg(ins);
             // The first byte is the opcode
@@ -132,7 +141,6 @@ fn parse_instructions(ins: u16) -> Result<Op, String> {
         }
         x if x == Op::AddStack.value() => Ok(Op::AddStack),
         x if x == Op::Signal(0).value() => Ok(Op::Signal(parse_instructions_arg(ins))),
-        // TODO: Implement the ADDREGISTER op code
         _ => Err(format!("unknown op - 0x{:X}", op)),
     }
 }
@@ -294,6 +302,11 @@ impl Machine {
             Op::PopRegister(r) => {
                 let value = self.pop()?;
                 self.registers[r as usize] = value;
+                Ok(())
+            }
+            Op::PushRegister(r) => {
+                let value = self.registers[r as usize];
+                self.push(value)?;
                 Ok(())
             }
             Op::AddStack => {

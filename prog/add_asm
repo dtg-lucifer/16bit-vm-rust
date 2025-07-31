@@ -28,4 +28,9 @@ NOP                 ; do nothing
 
 ADDR A B            ; add the values in A and B, result in A
 
+PUSHR A             ; push the result in A onto the stack
+POP B               ; pop the result into B
+
+; Now both A and B should contain the sum of their original values
+
 SIG $09             ; signal to the monitor that the program is done

@@ -4,7 +4,7 @@ A simple 16-bit virtual machine implementation in Rust. This project provides a 
 
 ## Architecture Overview
 
-The Rusty 16-bit VM is a stack-based virtual machine designed with simplicity in mind. It executes instructions sequentially, using a stack for data operations and registers for state management.
+The Rusty 16-bit VM is a stack-based virtual machine designed with simplicity in mind. It executes instructions sequentially, using a stack for data operations and registers for state management. Recent updates have expanded its capabilities with register-to-register operations and enhanced assembler support.
 
 The VM is designed with the following components:
 
@@ -87,9 +87,10 @@ Memory:
 | 0x00   | NOP         | (none)            | No operation                               |
 | 0x01   | PUSH        | 8-bit value       | Push value onto stack                      |
 | 0x02   | POPREGISTER | Register index    | Pop value from stack into register         |
-| 0x03   | ADDSTACK    | (none)            | Pop two values, add them, push result      |
-| 0x04   | ADDREGISTER | Two 4-bit indices | Add two registers, store in first register |
-| 0x05   | SIGNAL      | 8-bit signal code | Signal the VM with a specific code         |
+| 0x03   | PUSHREGISTER | Register index   | Push register value onto stack             |
+| 0x0F   | ADDSTACK    | (none)            | Pop two values, add them, push result      |
+| 0xFF   | ADDREGISTER | Two 4-bit indices | Add two registers, store in first register |
+| 0x09   | SIGNAL      | 8-bit signal code | Signal the VM with a specific code         |
 
 ## Programming the VM
 
@@ -342,13 +343,16 @@ The VM includes a basic assembler that can translate assembly language instructi
 
 ### Assembly Instructions
 
-| Assembly  | Description                           | Example    |
-| --------- | ------------------------------------- | ---------- |
-| `PUSH #n` | Push decimal value n onto stack       | `PUSH #10` |
-| `PUSH $n` | Push hexadecimal value n onto stack   | `PUSH $0A` |
-| `POP reg` | Pop value from stack into register    | `POP A`    |
-| `ADDS`    | Pop two values, add them, push result | `ADDS`     |
-| `SIG $n`  | Signal the VM with hex code n         | `SIG $09`  |
+| Assembly    | Description                           | Example      |
+| ----------- | ------------------------------------- | ------------ |
+| `PUSH #n`   | Push decimal value n onto stack       | `PUSH #10`   |
+| `PUSH $n`   | Push hexadecimal value n onto stack   | `PUSH $0A`   |
+| `POP reg`   | Pop value from stack into register    | `POP A`      |
+| `PUSHR reg` | Push register value onto stack        | `PUSHR A`    |
+| `ADDS`      | Pop two values, add them, push result | `ADDS`       |
+| `ADDR r1 r2`| Add registers, store in first register| `ADDR A B`   |
+| `NOP`       | No operation                          | `NOP`        |
+| `SIG $n`    | Signal the VM with hex code n         | `SIG $09`    |
 
 ### Assembly Example
 
@@ -361,8 +365,13 @@ PUSH #5     ; Push decimal 5 onto the stack
 PUSH #22    ; Push decimal 22 onto the stack
 ADDS        ; Add the two values (5+22=27)
 POP C       ; Store result (27) in register C
-PUSH #100   ; Push decimal 100 onto the stack
-POP A       ; Store value (100) in register A
+PUSH #10    ; Push decimal 10 onto the stack
+POP A       ; Store value (10) in register A
+PUSH #20    ; Push decimal 20 onto the stack
+POP B       ; Store value (20) in register B
+ADDR A B    ; Add registers: A = A + B (10 + 20 = 30)
+PUSHR A     ; Push register A value (30) onto stack
+POP B       ; Store value (30) in register B
 SIG $09     ; Signal to halt the VM
 ```
 
@@ -387,6 +396,28 @@ make gen-hex
 # Run the VM with the generated binary
 make run
 ```
+
+## Recent Updates
+
+The latest version of the Rusty 16-bit VM includes the following enhancements:
+
+1. **Register-to-Register Operations**: Added the `ADDR` instruction that allows direct addition between registers without needing to use the stack
+2. **Push Register**: Implemented the `PUSHR` instruction that pushes the value of a register onto the stack
+3. **No Operation**: Added the `NOP` instruction for padding and timing purposes
+4. **Enhanced Instruction Encoding**: Improved opcode mapping to better support future instruction set extensions
+5. **Extended Assembler Support**: The assembler now supports all new instructions with proper validation
+
+These improvements make the VM more versatile and closer to real-world CPU architectures by providing both stack-based and register-based operation models.
+
+## Future Development
+
+While this marks the final planned update to the project, potential future enhancements could include:
+
+- Implementing conditional jumps and branches
+- Adding memory access instructions
+- Supporting more complex arithmetic operations
+- Implementing a proper calling convention for subroutines
+- Developing a higher-level language that compiles to the VM's assembly
 
 ## License
 

@@ -38,6 +38,21 @@ pub fn parse_parts(parts: Vec<&str>) -> Result<Vec<u8>, String> {
                 // If we get here, we didn't find a valid operand
                 return Err(format!("Missing or invalid operand for PUSH instruction"));
             }
+            "PUSHR" => {
+                outputs.push(Op::PushRegister(Register::A).value());
+                if i + 1 < parts.len() {
+                    let reg = parts[i + 1];
+                    // Parse register name to its enum value
+                    let r = Register::from_str(reg)
+                        .map_err(|_| format!("Invalid register name: {}", reg))?;
+                    // Push the enum discriminant value (0 for A, 1 for B, etc.)
+                    outputs.push(r as u8);
+                    i += 2; // Skip the register we just processed
+                    continue;
+                } else {
+                    return Err(format!("Missing register for PUSHR instruction"));
+                }
+            }
             "ADDS" => {
                 outputs.push(Op::AddStack.value());
                 outputs.push(0); // AddStack doesn't use the second byte, but we need it
