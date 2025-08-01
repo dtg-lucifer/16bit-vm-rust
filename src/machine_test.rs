@@ -39,20 +39,22 @@ mod tests {
         assert_eq!(Op::Nop.value(), 0x00);
         assert_eq!(Op::Push(0).value(), 0x01);
         assert_eq!(Op::PopRegister(Register::A).value(), 0x02);
-        assert_eq!(Op::AddStack.value(), 0x03);
+        assert_eq!(Op::PushRegister(Register::A).value(), 0x03);
+        assert_eq!(Op::AddStack.value(), 0x0F);
         assert_eq!(Op::AddRegister(Register::A, Register::B).value(), 0x04);
-        assert_eq!(Op::Signal(0).value(), 0x05);
+        assert_eq!(Op::Signal(0).value(), 0x09);
 
         // Test Op::equals function
         assert!(Op::equals(0x00, Op::Nop));
         assert!(Op::equals(0x01, Op::Push(0)));
         assert!(Op::equals(0x02, Op::PopRegister(Register::A)));
-        assert!(Op::equals(0x03, Op::AddStack));
+        assert!(Op::equals(0x03, Op::PushRegister(Register::A)));
+        assert!(Op::equals(0x0F, Op::AddStack));
         assert!(Op::equals(0x04, Op::AddRegister(Register::A, Register::B)));
-        assert!(Op::equals(0x05, Op::Signal(0)));
+        assert!(Op::equals(0x09, Op::Signal(0)));
 
         assert!(!Op::equals(0x01, Op::Nop));
-        assert!(!Op::equals(0xFF, Op::Push(0)));
+        assert!(!Op::equals(0x00, Op::Push(0)));
     }
 
     #[test]

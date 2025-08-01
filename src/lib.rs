@@ -5,6 +5,9 @@
 //! - 8 16-bit registers
 //! - Simple instruction set
 
+/// Macros module with code generation utilities
+pub mod macros;
+
 /// Machine module provides the core VM implementation.
 pub mod machine;
 

@@ -2,59 +2,32 @@
 
 use std::collections::HashMap;
 
-use crate::memory::{Addressable, LinearMemory};
+use crate::{
+    define_registers,
+    memory::{Addressable, LinearMemory},
+};
 
-/// Register set for the 16-bit VM.
-/// Each register is 16 bits (2 bytes) wide.
-#[derive(Debug, PartialEq, Eq, Clone, Copy)]
-#[repr(u8)]
-pub enum Register {
-    /// General purpose register A (index 0)
-    A = 0x00,
-    /// General purpose register B (index 1)
-    B = 0x01,
-    /// General purpose register C (index 2)
-    C = 0x02,
-    /// Memory operations register (index 3)
-    M = 0x03,
-    /// Stack Pointer register - points to next available stack location (index 4)
-    SP = 0x04,
-    /// Program Counter register - points to next instruction (index 5)
-    PC = 0x05,
-    /// Base Pointer register - for stack frames (index 6)
-    BP = 0x06,
-    /// Status flags register (index 7)
-    FLAGS = 0x07,
-}
-
-impl Register {
-    /// Converts a numeric value to a register enum.
-    pub fn from_u8(v: u8) -> Option<Self> {
-        match v {
-            x if x == Register::A as u8 => Some(Register::A),
-            x if x == Register::B as u8 => Some(Register::B),
-            x if x == Register::C as u8 => Some(Register::C),
-            x if x == Register::M as u8 => Some(Register::M),
-            x if x == Register::SP as u8 => Some(Register::SP),
-            x if x == Register::BP as u8 => Some(Register::BP),
-            x if x == Register::PC as u8 => Some(Register::PC),
-            x if x == Register::FLAGS as u8 => Some(Register::FLAGS),
-            _ => None,
-        }
-    }
-
-    pub fn from_str(s: &str) -> Result<Self, String> {
-        match s {
-            "A" => Ok(Register::A),
-            "B" => Ok(Register::B),
-            "C" => Ok(Register::C),
-            "M" => Ok(Register::M),
-            "SP" => Ok(Register::SP),
-            "PC" => Ok(Register::PC),
-            "BP" => Ok(Register::BP),
-            "FLAGS" => Ok(Register::FLAGS),
-            _ => Err(format!("Invalid register name: {}", s)),
-        }
+define_registers! {
+    /// Register enum definition with 8 registers.
+    #[derive(Debug, PartialEq, Eq, Clone, Copy)]
+    #[repr(u8)]
+    pub enum Register {
+        /// General purpose register A (index 0)
+        A = 0x00,
+        /// General purpose register B (index 1)
+        B = 0x01,
+        /// General purpose register C (index 2)
+        C = 0x02,
+        /// Memory operations register (index 3)
+        M = 0x03,
+        /// Stack Pointer register - points to next available stack location (index 4)
+        SP = 0x04,
+        /// Program Counter register - points to next instruction (index 5)
+        PC = 0x05,
+        /// Base Pointer register - for stack frames (index 6)
+        BP = 0x06,
+        /// Status flags register (index 7)
+        FLAGS = 0x07,
     }
 }
 
@@ -77,12 +50,12 @@ pub enum Op {
     /// Push a register value onto the stack (opcode 0x03)
     /// Parameter: register to push
     PushRegister(Register) = 0x03,
-    /// Add top two values on stack, push result (opcode 0x03)
-    AddStack = 0x0f,
+    /// Add top two values on stack, push result (opcode 0x0F)
+    AddStack = 0x0F,
     /// Add two registers, store result in first register (opcode 0x04)
     /// Parameters: destination register, source register
-    AddRegister(Register, Register) = 0xff,
-    /// Signal returns the Signal (opcode 0x05)
+    AddRegister(Register, Register) = 0x04,
+    /// Signal returns the Signal (opcode 0x09)
     /// Parameters: signal integer
     Signal(u8) = 0x09,
 }
@@ -90,9 +63,6 @@ pub enum Op {
 /// Implementation of operation-related functionality.
 impl Op {
     /// Gets the numeric opcode value for this operation.
-    ///
-    /// # Safety
-    /// Uses unsafe code to extract the enum discriminant value
     pub fn value(&self) -> u8 {
         unsafe { *<*const _>::from(self).cast::<u8>() }
     }
