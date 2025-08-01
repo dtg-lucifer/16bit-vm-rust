@@ -14,9 +14,17 @@ pub mod machine;
 /// Memory module provides the memory system for the VM.
 pub mod memory;
 
+/// Register module provides the register implementation
+pub mod registers;
+
+/// Opcodes module provides the register implementation
+pub mod opcodes;
+
 /// Re-export key components for easier access
 pub use crate::machine::*;
 pub use crate::memory::*;
+pub use crate::opcodes::*;
+pub use crate::registers::*;
 
 // Include test modules
 #[cfg(test)]

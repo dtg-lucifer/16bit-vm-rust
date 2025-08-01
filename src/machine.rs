@@ -3,117 +3,10 @@
 use std::collections::HashMap;
 
 use crate::{
-    define_registers,
+    Register, execute_instruction,
     memory::{Addressable, LinearMemory},
+    opcodes::parse_instructions,
 };
-
-define_registers! {
-    /// Register enum definition with 8 registers.
-    #[derive(Debug, PartialEq, Eq, Clone, Copy)]
-    #[repr(u8)]
-    pub enum Register {
-        /// General purpose register A (index 0)
-        A = 0x00,
-        /// General purpose register B (index 1)
-        B = 0x01,
-        /// General purpose register C (index 2)
-        C = 0x02,
-        /// Memory operations register (index 3)
-        M = 0x03,
-        /// Stack Pointer register - points to next available stack location (index 4)
-        SP = 0x04,
-        /// Program Counter register - points to next instruction (index 5)
-        PC = 0x05,
-        /// Base Pointer register - for stack frames (index 6)
-        BP = 0x06,
-        /// Status flags register (index 7)
-        FLAGS = 0x07,
-    }
-}
-
-/// Operations supported by the VM.
-///
-/// Each operation corresponds to a specific instruction opcode.
-/// The VM uses a 2-byte instruction format, where the first byte is the opcode
-/// and the second byte is an argument (when applicable).
-#[derive(Debug, PartialEq, Eq, Clone)]
-#[repr(u8)]
-pub enum Op {
-    /// No operation (opcode 0x00)
-    Nop = 0x00,
-    /// Push a value onto the stack (opcode 0x01)
-    /// Parameter: 8-bit value to push
-    Push(u8) = 0x01,
-    /// Pop a value from the stack into a register (opcode 0x02)
-    /// Parameter: destination register
-    PopRegister(Register) = 0x02,
-    /// Push a register value onto the stack (opcode 0x03)
-    /// Parameter: register to push
-    PushRegister(Register) = 0x03,
-    /// Add top two values on stack, push result (opcode 0x0F)
-    AddStack = 0x0F,
-    /// Add two registers, store result in first register (opcode 0x04)
-    /// Parameters: destination register, source register
-    AddRegister(Register, Register) = 0x04,
-    /// Signal returns the Signal (opcode 0x09)
-    /// Parameters: signal integer
-    Signal(u8) = 0x09,
-}
-
-/// Implementation of operation-related functionality.
-impl Op {
-    /// Gets the numeric opcode value for this operation.
-    pub fn value(&self) -> u8 {
-        unsafe { *<*const _>::from(self).cast::<u8>() }
-    }
-
-    /// Checks if a numeric opcode matches a specific operation.
-    pub fn equals(x: u8, other: Self) -> bool {
-        x == other.value()
-    }
-}
-
-/// Parses a 16-bit instruction and extracts the 8-bit argument.
-/// Uses little-endian format with ARGUMENT in upper 8 bits and OPCODE in lower 8 bits
-fn parse_instructions_arg(ins: u16) -> u8 {
-    ((ins & 0xff00) >> 8) as u8
-}
-
-/// Parses a 16-bit instruction into an operation.
-/// Extracts the opcode (lower 8 bits) and returns the corresponding operation.
-fn parse_instructions(ins: u16) -> Result<Op, String> {
-    let op = (ins & 0xff) as u8;
-
-    match op {
-        x if x == Op::Nop.value() => Ok(Op::Nop),
-        x if x == Op::Push(0).value() => Ok(Op::Push(parse_instructions_arg(ins))),
-        x if x == Op::PopRegister(Register::A).value() => {
-            let arg = parse_instructions_arg(ins);
-            Register::from_u8(arg)
-                .ok_or(format!("unknown register - 0x{:X}", arg))
-                .map(|r| Op::PopRegister(r))
-        }
-        x if x == Op::PushRegister(Register::A).value() => {
-            let arg = parse_instructions_arg(ins);
-            Register::from_u8(arg)
-                .ok_or(format!("unknown register - 0x{:X}", arg))
-                .map(|r| Op::PushRegister(r))
-        }
-        x if x == Op::AddRegister(Register::A, Register::A).value() => {
-            let arg = parse_instructions_arg(ins);
-            // The first byte is the opcode
-            // The second byte is divided into two 4 bit parts to store 2 register address
-            let reg1 = (arg >> 4) & 0x0F; // Upper 4 bits
-            let reg2 = arg & 0x0F; // Lower 4 bits
-            let r1 = Register::from_u8(reg1).ok_or(format!("unknown register - 0x{:X}", reg1))?;
-            let r2 = Register::from_u8(reg2).ok_or(format!("unknown register - 0x{:X}", reg2))?;
-            Ok(Op::AddRegister(r1, r2))
-        }
-        x if x == Op::AddStack.value() => Ok(Op::AddStack),
-        x if x == Op::Signal(0).value() => Ok(Op::Signal(parse_instructions_arg(ins))),
-        _ => Err(format!("unknown op - 0x{:X}", op)),
-    }
-}
 
 /// Function type for signal handlers in the VM.
 /// Called when the VM executes a SIGNAL instruction.
@@ -124,8 +17,8 @@ type SignalFunction = fn(&mut Machine) -> Result<(), String>;
 /// This struct represents the entire virtual machine, containing
 /// registers, memory, and state information.
 pub struct Machine {
-    /// The VM's register set (8 registers, each 16 bits)
-    pub registers: [u16; 8],
+    /// The VM's register set (13 registers, each 16 bits)
+    pub registers: [u16; 13],
     /// Keeps track whether the machine is in halt or not
     pub halt: bool,
     /// Keeps the cache of signal handler methods
@@ -140,7 +33,7 @@ impl Machine {
     pub fn new() -> Self {
         let memory_size = 8 * 1024; // -> 8 KB
         let mut machine = Self {
-            registers: [0; 8],
+            registers: [0; 13],
             halt: false,
             signal_handlers: HashMap::new(),
             memory: Box::new(LinearMemory::new(memory_size)),
@@ -210,20 +103,25 @@ impl Machine {
                 Some(r) => format!("{:?}", r),
                 None => "Unknown".to_string(),
             };
-            if reg_name == "FLAGS" {
-                // Special case for FLAGS register
-                println!("\tFlags {}: 0b{:08b} ({})", reg_name, reg, reg);
+            if reg_name == "SP" || reg_name == "PC" || reg_name == "FLAGS" {
                 continue;
             }
             println!("\tRegister {}: 0x{:04X} ({})", reg_name, reg, reg);
         }
         println!(
-            "\tStack Pointer (SP): 0x{:04X}",
+            "\tStack Pointer (SP): 0x{:04X} ({})",
+            self.registers[Register::SP as usize],
             self.registers[Register::SP as usize]
         );
         println!(
-            "\tProgram Counter (PC): 0x{:04X}",
+            "\tProgram Counter (PC): 0x{:04X} ({})",
+            self.registers[Register::PC as usize],
             self.registers[Register::PC as usize]
+        );
+        println!(
+            "\tFlags (8 bit): 0b{:08b} ({})",
+            self.registers[Register::FLAGS as usize],
+            self.registers[Register::FLAGS as usize],
         );
         println!("-----------------------------------------------");
     }
@@ -265,38 +163,6 @@ impl Machine {
             self.registers[Register::SP as usize]
         );
 
-        // Execute the operation
-        match op {
-            Op::Nop => Ok(()),
-            Op::Push(v) => self.push(v.into()),
-            Op::PopRegister(r) => {
-                let value = self.pop()?;
-                self.registers[r as usize] = value;
-                Ok(())
-            }
-            Op::PushRegister(r) => {
-                let value = self.registers[r as usize];
-                self.push(value)?;
-                Ok(())
-            }
-            Op::AddStack => {
-                let a = self.pop()?;
-                let b = self.pop()?;
-                let result = a + b;
-                self.push(result)?;
-                Ok(())
-            }
-            Op::AddRegister(r1, r2) => {
-                self.registers[r1 as usize] += self.registers[r2 as usize];
-                Ok(())
-            }
-            Op::Signal(s) => {
-                let sig_fn = self
-                    .signal_handlers
-                    .get(&s)
-                    .ok_or(format!("unknown signal - 0x{:X}", s))?;
-                sig_fn(self)
-            }
-        }
+        execute_instruction(self, op)
     }
 }
