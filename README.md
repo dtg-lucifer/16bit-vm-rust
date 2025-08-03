@@ -82,15 +82,15 @@ Memory:
 
 ## Instruction Set
 
-| Opcode | Mnemonic    | Argument          | Description                                |
-| ------ | ----------- | ----------------- | ------------------------------------------ |
-| 0x00   | NOP         | (none)            | No operation                               |
-| 0x01   | PUSH        | 8-bit value       | Push value onto stack                      |
-| 0x02   | POPREGISTER | Register index    | Pop value from stack into register         |
-| 0x03   | PUSHREGISTER | Register index   | Push register value onto stack             |
-| 0x0F   | ADDSTACK    | (none)            | Pop two values, add them, push result      |
-| 0xFF   | ADDREGISTER | Two 4-bit indices | Add two registers, store in first register |
-| 0x09   | SIGNAL      | 8-bit signal code | Signal the VM with a specific code         |
+| Opcode | Mnemonic     | Argument          | Description                                |
+| ------ | -----------  | ----------------- | ------------------------------------------ |
+| 0x00   | NOP          | (none)            | No operation                               |
+| 0x01   | PUSH         | 8-bit value       | Push value onto stack                      |
+| 0x02   | POPREGISTER  | Register index    | Pop value from stack into register         |
+| 0x03   | PUSHREGISTER | Register index    | Push register value onto stack             |
+| 0x0F   | ADDSTACK     | (none)            | Pop two values, add them, push result      |
+| 0xFF   | ADDREGISTER  | Two 4-bit indices | Add two registers, store in first register |
+| 0x09   | SIGNAL       | 8-bit signal code | Signal the VM with a specific code         |
 
 ## Programming the VM
 
@@ -397,6 +397,226 @@ make gen-hex
 make run
 ```
 
+## System Architecture
+
+The Rusty 16-bit VM project consists of two main components: the assembler and the virtual machine. The following diagram illustrates how these components interact:
+
+```mermaid
+graph TD
+    A[Assembly Source File<br>*.asm] --> B[Assembler Binary<br>bin/asm]
+    B --> C[Bytecode File<br>*.hex]
+    C --> D[VM Binary<br>bin/vm]
+    D --> E[Program Execution]
+    D --> F[VM State Display]
+
+    subgraph "Development Flow"
+        G[Edit Assembly Code] --> H[Compile to Bytecode]
+        H --> I[Execute in VM]
+        I --> J[View Results]
+        J --> G
+    end
+
+    B -.-> H
+    C -.-> I
+    E -.-> J
+
+    classDef source fill:#f9f,stroke:#333;
+    classDef bytecode fill:#bbf,stroke:#333;
+    classDef output fill:#bfb,stroke:#333;
+
+    class A source;
+    class C bytecode;
+    class E,F output;
+```
+
+## Assembler Implementation
+
+### Compiler Workflow
+
+The following diagram illustrates the entire compilation process from assembly code to bytecode:
+
+```mermaid
+graph TD
+    A[Assembly Source Code] --> B[Lexical Analysis]
+    B --> C{Tokens}
+    C --> D[Parsing]
+    D --> E{Intermediate Representation}
+    E --> F[Code Generation Pass 1:<br>Label Resolution]
+    F --> G{Label Map}
+    E --> H[Code Generation Pass 2:<br>Bytecode Generation]
+    G --> H
+    H --> I[Final Bytecode]
+    I --> J[Virtual Machine Execution]
+
+    subgraph "Lexer (lexer.rs)"
+        B
+        C
+    end
+
+    subgraph "Parser (parser.rs)"
+        D
+        E
+    end
+
+    subgraph "Code Generator (codegen.rs)"
+        F
+        G
+        H
+        I
+    end
+
+    classDef code fill:#f9f,stroke:#333;
+    classDef data fill:#bbf,stroke:#333;
+    classDef exec fill:#bfb,stroke:#333;
+
+    class A,B,D,F,H code;
+    class C,E,G,I data;
+    class J exec;
+```
+
+### Instruction Processing Example
+
+The following diagram shows how a single instruction (`ADDR A B`) flows through the compilation pipeline:
+
+```mermaid
+flowchart TD
+    A["ADDR A B ; add registers"] --> B["Lexer"]
+    B --> C["Tokens: [Keyword('ADDR'), Register('A'), Register('B')]"]
+    C --> D["Parser"]
+    D --> E["IR: Instruction::AddRegister('A', 'B')"]
+    E --> F["Code Generator"]
+    F --> G1["Map registers: A → 0, B → 1"]
+    G1 --> G2["Get opcode: Op::AddRegister = 0x04"]
+    G2 --> G3["Encode registers: (0 << 4 | 1) = 0x01"]
+    G3 --> H["Bytecode: [0x04, 0x01]"]
+    H --> I["VM Memory"]
+
+    subgraph "VM Execution"
+        I --> J["Fetch: PC=n, read 2 bytes"]
+        J --> K["Decode: opcode=0x04, regs=(0,1)"]
+        K --> L["Execute: registers[0] += registers[1]"]
+        L --> M["A = A + B"]
+    end
+
+    classDef source fill:#f9f,stroke:#333,stroke-width:2px;
+    classDef bytecode fill:#bbf,stroke:#333,stroke-width:2px;
+    classDef result fill:#bfb,stroke:#333,stroke-width:2px;
+
+    class A source;
+    class H bytecode;
+    class M result;
+```
+
+The assembler is structured as a multi-stage compilation pipeline that converts assembly code into bytecode for the VM. This approach provides clear separation of concerns and makes the assembler extensible for future enhancements.
+
+### Compilation Pipeline
+
+The assembler processes assembly code in the following stages:
+
+1. **Lexical Analysis** - Converts source text into tokens
+2. **Parsing** - Transforms tokens into an intermediate representation (IR)
+3. **Code Generation** - Converts IR into final bytecode
+
+### Stage 1: Lexical Analysis
+
+The lexer (`lexer.rs`) reads the assembly file line by line, handling:
+
+- Comments (lines starting with `;` or inline comments)
+- Empty lines
+- Instructions and their operands
+- Labels
+- Different numeric formats (decimal with `#` prefix, hex with `$` prefix)
+
+Each line is converted into a series of tokens like:
+- `Keyword` (instructions like PUSH, POP)
+- `Register` (register names like A, B)
+- `Immediate` (decimal values)
+- `Hex` (hexadecimal values)
+- `LabelDecl` (label declarations)
+
+For example, the line `PUSH #10 ; push decimal 10` is tokenized as `[Keyword("PUSH"), Immediate(10)]`, with the comment removed.
+
+### Stage 2: Parsing
+
+The parser (`parser.rs`) converts tokens into an intermediate representation using the `Instruction` enum:
+
+- `Nop` - No operation
+- `PushImmediate` - Push decimal value
+- `PushHex` - Push hexadecimal value
+- `PushRegister` - Push register value
+- `Pop` - Pop value into register
+- `AddStack` - Add values from stack
+- `AddRegister` - Add two registers
+- `Signal` - Signal the VM
+- `Label` - Define a program label
+- `Jump` - Jump to a label
+
+The intermediate representation decouples the assembly syntax from the final bytecode, making it easier to optimize or transform the code.
+
+### Stage 3: Code Generation
+
+The code generator (`codegen.rs`) performs a two-pass process:
+
+1. **First pass**: Maps labels to their byte offsets in the final code
+2. **Second pass**: Generates actual bytecode for each instruction
+
+This approach enables support for forward references and jumps to labels defined later in the code.
+
+### Example: Processing `add_asm`
+
+Here's how the program from `prog/add_asm` flows through the pipeline:
+
+1. **Source line**: `PUSH #10            ; push 10 onto the stack`
+   - **Lexer**: Generates tokens `[Keyword("PUSH"), Immediate(10)]`
+   - **Parser**: Creates `Instruction::PushImmediate(10)`
+   - **Codegen**: Outputs bytes `[0x01, 0x0A]` (opcode=PUSH, arg=10)
+
+2. **Source line**: `ADDR A B            ; add the values in A and B, result in A`
+   - **Lexer**: Generates tokens `[Keyword("ADDR"), Register("A"), Register("B")]`
+   - **Parser**: Creates `Instruction::AddRegister("A", "B")`
+   - **Codegen**: Outputs bytes `[0x04, 0x10]` (opcode=ADDR, arg=0x10 combining register indices)
+
+3. **Source line**: `SIG $09             ; signal to the monitor that the program is done`
+   - **Lexer**: Generates tokens `[Keyword("SIG"), Hex(9)]`
+   - **Parser**: Creates `Instruction::Signal(9)`
+   - **Codegen**: Outputs bytes `[0x09, 0x09]` (opcode=SIGNAL, arg=9)
+
+This multi-stage approach makes it easy to extend the assembler with new instructions and optimization passes in the future.
+
+### Future Instruction Support
+
+While the codebase includes support for labels and jump instructions in the parser and IR phases, the code generator currently has a placeholder (`todo!`) for jump implementation. This will be completed in a future update to enable control flow operations like:
+
+```
+loop_start:
+  PUSH #1           ; push 1 onto stack
+  ADDR A B          ; A = A + B
+  PUSHR A           ; push A onto stack
+  PUSH #100         ; push 100 onto stack
+  CMP               ; compare values (future instruction)
+  JLT loop_start    ; jump if less than (future instruction)
+```
+
+### Instruction Encoding
+
+When converting assembly to bytecode, the assembler follows these encoding rules:
+
+1. **Basic Instructions** (NOP, ADDSTACK):
+   - First byte: Opcode
+   - Second byte: 0 (unused)
+
+2. **Value Instructions** (PUSH, SIGNAL):
+   - First byte: Opcode
+   - Second byte: Immediate value
+
+3. **Register Instructions** (POP, PUSHR):
+   - First byte: Opcode
+   - Second byte: Register index (0-7)
+
+4. **Two-Register Instructions** (ADDR):
+   - First byte: Opcode
+   - Second byte: Combined register indices (first register in upper 4 bits, second in lower 4 bits)
+
 ## Recent Updates
 
 The latest version of the Rusty 16-bit VM includes the following enhancements:
@@ -405,7 +625,9 @@ The latest version of the Rusty 16-bit VM includes the following enhancements:
 2. **Push Register**: Implemented the `PUSHR` instruction that pushes the value of a register onto the stack
 3. **No Operation**: Added the `NOP` instruction for padding and timing purposes
 4. **Enhanced Instruction Encoding**: Improved opcode mapping to better support future instruction set extensions
-5. **Extended Assembler Support**: The assembler now supports all new instructions with proper validation
+5. **Multi-Stage Assembler**: Implemented a sophisticated assembler with lexer, parser, and code generation phases
+6. **Label Support**: Added support for program labels in assembly code (foundation for jumps and branches)
+7. **Comment Handling**: Enhanced assembly syntax with full support for inline and full-line comments
 
 These improvements make the VM more versatile and closer to real-world CPU architectures by providing both stack-based and register-based operation models.
 
@@ -413,7 +635,8 @@ These improvements make the VM more versatile and closer to real-world CPU archi
 
 While this marks the final planned update to the project, potential future enhancements could include:
 
-- Implementing conditional jumps and branches
+- Implementing conditional jumps and branches (foundational support already in place)
+- Completing the jump instruction implementation
 - Adding memory access instructions
 - Supporting more complex arithmetic operations
 - Implementing a proper calling convention for subroutines
