@@ -18,7 +18,11 @@ mod tests {
         assert_eq!(Register::from_u8(5), Some(Register::PC));
         assert_eq!(Register::from_u8(6), Some(Register::BP));
         assert_eq!(Register::from_u8(7), Some(Register::FLAGS));
-        assert_eq!(Register::from_u8(8), None);
+        assert_eq!(Register::from_u8(8), Some(Register::R0));
+        assert_eq!(Register::from_u8(9), Some(Register::R1));
+        assert_eq!(Register::from_u8(10), Some(Register::R2));
+        assert_eq!(Register::from_u8(11), Some(Register::R3));
+        assert_eq!(Register::from_u8(12), Some(Register::R4));
         assert_eq!(Register::from_u8(255), None);
 
         // Test Register::from_str conversions
