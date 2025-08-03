@@ -88,7 +88,7 @@ impl Machine {
 
     /// Prints the current state of the VM to the console.
     /// Shows register values, stack pointer, and program counter.
-    pub fn print_state(&self) {
+    pub fn print_final_state(&self) {
         println!("-----------------------------------------------");
         println!("----------------Final State--------------------");
         println!("Final output:");
@@ -124,6 +124,73 @@ impl Machine {
             self.registers[Register::FLAGS as usize],
         );
         println!("-----------------------------------------------");
+    }
+
+    pub fn print_intermediate_state(&self) {
+        let pc = self.registers[Register::PC as usize];
+        let sp = self.registers[Register::SP as usize];
+        let flags = self.registers[Register::FLAGS as usize];
+
+        // Print header with PC and SP info
+        println!(
+            "\n[State] PC=0x{:04X} | SP=0x{:04X} | FLAGS=0b{:08b}",
+            pc, sp, flags
+        );
+
+        // First row: A, B, C, M registers
+        print!("Regs: ");
+        for &idx in &[Register::A, Register::B, Register::C, Register::M] {
+            let val = self.registers[idx as usize];
+            print!("{:?}=0x{:04X}({:<3}) ", idx, val, val);
+        }
+        println!();
+
+        // Second row: R0-R4 registers
+        print!("     ");
+        for idx in Register::R0 as usize..=Register::R4 as usize {
+            let val = self.registers[idx];
+            let name = Register::from_u8(idx as u8).unwrap();
+            print!("{:?}=0x{:04X}({:<3}) ", name, val, val);
+        }
+        println!();
+
+        // Try to display some stack items if available
+        if sp >= 0x1002 {
+            // At least one item on stack
+            let mut stack_items = Vec::new();
+            let mut addr = sp - 2;
+            // Show up to 3 items from the stack
+            for _ in 0..3 {
+                if addr < 0x1000 {
+                    break;
+                }
+                if let Some(val) = self.memory.read2(addr) {
+                    stack_items.push((addr, val));
+                    addr -= 2;
+                } else {
+                    break;
+                }
+            }
+
+            if !stack_items.is_empty() {
+                print!("Stack: ");
+                for (addr, val) in stack_items {
+                    print!("[0x{:04X}]=0x{:04X}({}) ", addr, val, val);
+                }
+                println!();
+            }
+        }
+
+        // Show next instruction if available
+        if let Some(opcode) = self.memory.read(pc) {
+            if let Some(arg) = self.memory.read(pc + 1) {
+                if let Ok(next_op) =
+                    crate::opcodes::parse_instructions((opcode as u16) | ((arg as u16) << 8))
+                {
+                    println!("Next: 0x{:04X} | {:?}", pc, next_op);
+                }
+            }
+        }
     }
 
     /// Executes a single instruction in the VM.

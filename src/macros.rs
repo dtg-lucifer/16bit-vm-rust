@@ -51,7 +51,8 @@ macro_rules! define_registers {
 
             /// Convert a string representation to a register enum.
             $vis fn from_str(s: &str) -> Result<Self, String> {
-                match s {
+                let s_upper = s.to_uppercase();
+                match s_upper.as_str() {
                     $(
                         stringify!($variant) => Ok($name::$variant),
                     )*

@@ -14,12 +14,16 @@ R_WATCH_COMMAND := 'run -q --bin vm -- $(PROGRAM_HEX)'
 all: run
 .PHONY: all
 
+step: gen-hex
+	$(RC) $(R_RUN_FLAGS) --bin vm -- $(PROGRAM_HEX) --manual
+.PHONY: step
+
 run: gen-hex
 	$(RC) $(R_RUN_FLAGS) --bin vm -- $(PROGRAM_HEX)
 .PHONY: run
 
 gen-hex:
-	$(RC) $(R_RUN_FLAGS) --bin asm -- $(PROGRAM_DIR)/add.asm > $(PROGRAM_HEX)
+	$(RC) $(R_RUN_FLAGS) --bin asm -- $(PROGRAM_DIR)/test.asm > $(PROGRAM_HEX)
 .PHONY: gen-hex
 
 build:

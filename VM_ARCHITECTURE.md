@@ -337,7 +337,7 @@ The VM includes an assembler that translates human-readable assembly code into m
 The assembler supports the following instruction formats:
 
 ```
-PUSH #10    ; Push decimal value 10 onto the stack
+PUSH %10    ; Push decimal value 10 onto the stack
 PUSH $0A    ; Push hexadecimal value 0A (10) onto the stack
 POP A       ; Pop value from stack into register A
 POP B       ; Pop value from stack into register B
@@ -360,9 +360,9 @@ Here's a complete example program that adds two numbers and stores the result in
 
 ```
 ; Add two numbers and store in Register B
-PUSH #10    ; Push 10 onto stack
+PUSH %10    ; Push 10 onto stack
 POP A       ; Store in Register A
-PUSH #20    ; Push 20 onto stack
+PUSH %20    ; Push 20 onto stack
 POP B       ; Store in Register B
 ADDR A B    ; Add: A = A + B (10 + 20 = 30)
 PUSHR A     ; Push result (30) onto stack
