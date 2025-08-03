@@ -1,6 +1,8 @@
 //! Assembler binary for the Rusty 16-bit VM.
 
 pub mod asm;
+pub mod lexer;
+pub mod parser;
 
 use std::{
     env,
