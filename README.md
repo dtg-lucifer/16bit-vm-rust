@@ -16,18 +16,80 @@ The VM is designed with the following components:
 
 ### Registers
 
-The VM includes 8 16-bit registers:
+The VM includes 13 16-bit registers:
 
-| Register | Index | Purpose           |
-| -------- | ----- | ----------------- |
-| A        | 0     | General purpose   |
-| B        | 1     | General purpose   |
-| C        | 2     | General purpose   |
-| M        | 3     | Memory operations |
-| SP       | 4     | Stack Pointer     |
-| PC       | 5     | Program Counter   |
-| BP       | 6     | Base Pointer      |
-| FLAGS    | 7     | Status flags      |
+| Register | Index | Purpose                                |
+| -------- | ----- | -------------------------------------- |
+| A        | 0     | General purpose / Result storage       |
+| B        | 1     | General purpose / Operand              |
+| C        | 2     | General purpose / Operand              |
+| M        | 3     | Memory operations register             |
+| SP       | 4     | Stack Pointer - points to next free slot|
+| PC       | 5     | Program Counter - points to next instruction |
+| BP       | 6     | Base Pointer - for stack frames        |
+| FLAGS    | 7     | Status flags / Control register        |
+| R0       | 8     | Pure general purpose (data only)       |
+| R1       | 9     | Pure general purpose (data only)       |
+| R2       | 10    | Pure general purpose (data only)       |
+| R3       | 11    | Pure general purpose (data only)       |
+| R4       | 12    | Pure general purpose (data only)       |
+
+
+
+#### Register Usage
+
+The 13 registers serve different purposes in the VM architecture:
+
+1. **Dual-Purpose Registers (A, B, C)**: These can be used for general storage but are also used as implicit operands by some instructions. For example, `ADDR A B` adds the value in register B to register A and stores the result in A. When writing VM programs, keep in mind that these registers may be implicitly modified by certain operations.
+
+2. **System Registers (M, SP, PC, BP, FLAGS)**: These registers have dedicated functions for managing program execution, memory operations, and VM state. They should generally only be modified with care as they control the VM's execution environment.
+
+3. **Pure General Purpose (R0-R4)**: These registers are exclusively for data storage and aren't implicitly used by any instructions. They're ideal when you need registers that won't be modified by side effects of other operations and provide additional storage beyond the A, B, C registers.
+
+#### Register Architecture Diagram
+
+```mermaid
+graph LR
+    subgraph "General Purpose"
+        A[A<br>0] --- B[B<br>1]
+        B --- C[C<br>2]
+    end
+
+    subgraph "System Registers"
+        M[M<br>3] --- SP[SP<br>4]
+        SP --- PC[PC<br>5]
+        PC --- BP[BP<br>6]
+        BP --- FLAGS[FLAGS<br>7]
+    end
+
+    subgraph "Pure General Purpose"
+        R0[R0<br>8] --- R1[R1<br>9]
+        R1 --- R2[R2<br>10]
+        R2 --- R3[R3<br>11]
+        R3 --- R4[R4<br>12]
+    end
+
+    A -.-> I[Result Storage]
+    B -.-> J[Primary Operand]
+    C -.-> K[Secondary Operand]
+    M -.-> L[Memory Access]
+    SP -.-> P[Stack Pointer]
+    PC -.-> Q[Program Counter]
+    BP -.-> R[Base Pointer]
+    FLAGS -.-> S[Status Flags]
+    R0 -.-> T[Pure Data]
+    R4 -.-> U[Pure Data]
+
+    classDef general fill:#f9f9ff,stroke:#333,stroke-width:2px;
+    classDef system fill:#fff9f9,stroke:#333,stroke-width:2px;
+    classDef pure fill:#f9fff9,stroke:#333,stroke-width:2px;
+    classDef function fill:#ffffff,stroke:#333,stroke-width:1px,stroke-dasharray: 5 5;
+
+    class A,B,C general;
+    class M,SP,PC,BP,FLAGS system;
+    class R0,R1,R2,R3,R4 pure;
+    class I,J,K,L,P,Q,R,S,T,U function;
+```
 
 ### Stack
 
@@ -63,6 +125,49 @@ Each instruction occupies 2 consecutive bytes in memory:
 +------------+------------+
 ```
 
+For two-register operations, the argument byte is divided into two 4-bit parts:
+
+```
++------------+---------------------------+
+| Byte 0     | Byte 1                    |
++------------+-----------+---------------+
+| OPCODE     | REGISTER1 | REGISTER2     |
++------------+-----------+---------------+
+| 8 bits     | 4 bits    | 4 bits        |
++------------+-----------+---------------+
+```
+
+This 4-bit encoding allows addressing all 13 registers (indices 0-12) in register-to-register operations.
+
+#### Register Encoding Visualization
+
+```mermaid
+graph TB
+    Ins["ADDR A B<br>Assembly Instruction"] --> Op[Opcode: 0x04<br>ADDREGISTER]
+    Ins --> Reg1["Register 1: A<br>Index: 0"]
+    Ins --> Reg2["Register 2: B<br>Index: 1"]
+
+    Op --> Byte0["First Byte<br>0x04"]
+    Reg1 --> High["High Nibble<br>0x0_"]
+    Reg2 --> Low["Low Nibble<br>0x_1"]
+
+    High --> Byte1["Second Byte<br>0x01"]
+    Low --> Byte1
+
+    Byte0 --> Final["Final Encoding<br>0x04 0x01"]
+    Byte1 --> Final
+
+    classDef asm fill:#f9f,stroke:#333;
+    classDef enc fill:#bbf,stroke:#333,color:#000,font-weight:bold;
+    classDef nibble fill:#dbf,stroke:#333;
+    classDef result fill:#bfb,stroke:#333,font-weight:bold;
+
+    class Ins asm;
+    class Op,Reg1,Reg2 nibble;
+    class Byte0,Byte1 enc;
+    class Final result;
+```
+
 Memory layout example showing instructions:
 
 ```
@@ -82,15 +187,15 @@ Memory:
 
 ## Instruction Set
 
-| Opcode | Mnemonic     | Argument          | Description                                |
-| ------ | -----------  | ----------------- | ------------------------------------------ |
-| 0x00   | NOP          | (none)            | No operation                               |
-| 0x01   | PUSH         | 8-bit value       | Push value onto stack                      |
-| 0x02   | POPREGISTER  | Register index    | Pop value from stack into register         |
-| 0x03   | PUSHREGISTER | Register index    | Push register value onto stack             |
-| 0x0F   | ADDSTACK     | (none)            | Pop two values, add them, push result      |
-| 0xFF   | ADDREGISTER  | Two 4-bit indices | Add two registers, store in first register |
-| 0x09   | SIGNAL       | 8-bit signal code | Signal the VM with a specific code         |
+| Opcode | Mnemonic    | Assembly     | Argument          | Description                                | Compatible Registers |
+| ------ | ----------- | ------------ | ----------------- | ------------------------------------------ | -------------------- |
+| 0x00   | NOP         | `NOP`        | (none)            | No operation                               | -                    |
+| 0x01   | PUSH        | `PUSH #n/$n` | 8-bit value       | Push value onto stack                      | -                    |
+| 0x02   | POPREGISTER | `POP reg`    | Register index    | Pop value from stack into register         | A-FLAGS, R0-R4       |
+| 0x03   | PUSHREGISTER| `PUSHR reg`  | Register index    | Push register value onto stack             | A-FLAGS, R0-R4       |
+| 0x0F   | ADDSTACK    | `ADDS`       | (none)            | Pop two values, add them, push result      | -                    |
+| 0x04   | ADDREGISTER | `ADDR r1 r2` | Two 4-bit indices | Add two registers, store in first register | A-FLAGS, R0-R4       |
+| 0x09   | SIGNAL      | `SIG $n`     | 8-bit signal code | Signal the VM with a specific code         | -                    |
 
 ## Programming the VM
 
@@ -343,16 +448,16 @@ The VM includes a basic assembler that can translate assembly language instructi
 
 ### Assembly Instructions
 
-| Assembly    | Description                           | Example      |
-| ----------- | ------------------------------------- | ------------ |
-| `PUSH #n`   | Push decimal value n onto stack       | `PUSH #10`   |
-| `PUSH $n`   | Push hexadecimal value n onto stack   | `PUSH $0A`   |
-| `POP reg`   | Pop value from stack into register    | `POP A`      |
-| `PUSHR reg` | Push register value onto stack        | `PUSHR A`    |
-| `ADDS`      | Pop two values, add them, push result | `ADDS`       |
-| `ADDR r1 r2`| Add registers, store in first register| `ADDR A B`   |
-| `NOP`       | No operation                          | `NOP`        |
-| `SIG $n`    | Signal the VM with hex code n         | `SIG $09`    |
+| Assembly    | Description                           | Example      | Registers      |
+| ----------- | ------------------------------------- | ------------ | -------------- |
+| `PUSH #n`   | Push decimal value n onto stack       | `PUSH #10`   | -              |
+| `PUSH $n`   | Push hexadecimal value n onto stack   | `PUSH $0A`   | -              |
+| `POP reg`   | Pop value from stack into register    | `POP A`      | A-H            |
+| `PUSHR reg` | Push register value onto stack        | `PUSHR A`    | A-H            |
+| `ADDS`      | Pop two values, add them, push result | `ADDS`       | -              |
+| `ADDR r1 r2`| Add registers, store in first register| `ADDR A B`   | A-H (typically A-C) |
+| `NOP`       | No operation                          | `NOP`        | -              |
+| `SIG $n`    | Signal the VM with hex code n         | `SIG $09`    | -              |
 
 ### Assembly Example
 
@@ -421,7 +526,7 @@ graph TD
     E -.-> J
 
     classDef source fill:#f9f,stroke:#333;
-    classDef bytecode fill:#bbf,stroke:#333;
+    classDef bytecode fill:#bbf,stroke:#333,color:#000,font-weight:bold;
     classDef output fill:#bfb,stroke:#333;
 
     class A source;
@@ -466,7 +571,7 @@ graph TD
     end
 
     classDef code fill:#f9f,stroke:#333;
-    classDef data fill:#bbf,stroke:#333;
+    classDef data fill:#bbf,stroke:#333,color:#000,font-weight:bold;
     classDef exec fill:#bfb,stroke:#333;
 
     class A,B,D,F,H code;
@@ -499,7 +604,7 @@ flowchart TD
     end
 
     classDef source fill:#f9f,stroke:#333,stroke-width:2px;
-    classDef bytecode fill:#bbf,stroke:#333,stroke-width:2px;
+    classDef bytecode fill:#bbf,stroke:#333,stroke-width:2px,color:#000,font-weight:bold;
     classDef result fill:#bfb,stroke:#333,stroke-width:2px;
 
     class A source;
@@ -574,7 +679,7 @@ Here's how the program from `prog/add_asm` flows through the pipeline:
 2. **Source line**: `ADDR A B            ; add the values in A and B, result in A`
    - **Lexer**: Generates tokens `[Keyword("ADDR"), Register("A"), Register("B")]`
    - **Parser**: Creates `Instruction::AddRegister("A", "B")`
-   - **Codegen**: Outputs bytes `[0x04, 0x10]` (opcode=ADDR, arg=0x10 combining register indices)
+   - **Codegen**: Outputs bytes `[0x04, 0x01]` (opcode=ADDR, arg=0x01 combining register indices 0 and 1)
 
 3. **Source line**: `SIG $09             ; signal to the monitor that the program is done`
    - **Lexer**: Generates tokens `[Keyword("SIG"), Hex(9)]`
@@ -611,11 +716,30 @@ When converting assembly to bytecode, the assembler follows these encoding rules
 
 3. **Register Instructions** (POP, PUSHR):
    - First byte: Opcode
-   - Second byte: Register index (0-7)
+   - Second byte: Register index (0-12)
+   - Example: `POP A` becomes `[0x02, 0x00]` (0x02=POP, 0x00=Register A)
 
 4. **Two-Register Instructions** (ADDR):
    - First byte: Opcode
    - Second byte: Combined register indices (first register in upper 4 bits, second in lower 4 bits)
+   - Example: `ADDR A B` becomes `[0x04, 0x01]` (0x04=ADDR, 0x01=(reg0<<4)|reg1)
+   - Supports all registers (0-12) since 4 bits can represent values 0-15
+
+The encoding for two-register instructions is designed for efficient storage:
+```
+ADDR A B  →  [0x04, 0x01]
+             └─┬─┘  └─┬─┘
+               │      │
+               │      └─ Register encoding: (A:0 << 4) | (B:1) = 0x01
+               └─ ADDREGISTER opcode: 0x04
+
+Binary representation:
+0000    0100  0000           0001
+ └─opcode─┘    └reg────┬────reg┘
+                High 4      Low 4
+                bits        bits
+                0000 = A    0001 = B
+```
 
 ## Recent Updates
 
@@ -623,11 +747,13 @@ The latest version of the Rusty 16-bit VM includes the following enhancements:
 
 1. **Register-to-Register Operations**: Added the `ADDR` instruction that allows direct addition between registers without needing to use the stack
 2. **Push Register**: Implemented the `PUSHR` instruction that pushes the value of a register onto the stack
-3. **No Operation**: Added the `NOP` instruction for padding and timing purposes
-4. **Enhanced Instruction Encoding**: Improved opcode mapping to better support future instruction set extensions
-5. **Multi-Stage Assembler**: Implemented a sophisticated assembler with lexer, parser, and code generation phases
-6. **Label Support**: Added support for program labels in assembly code (foundation for jumps and branches)
-7. **Comment Handling**: Enhanced assembly syntax with full support for inline and full-line comments
+3. **Extended Register Set**: Added five pure general-purpose registers (R0-R4) that aren't implicitly used by any instruction
+4. **Full 13-Register Support**: All instructions can use any of the 13 registers (A-FLAGS and R0-R4)
+5. **No Operation**: Added the `NOP` instruction for padding and timing purposes
+6. **Enhanced Instruction Encoding**: Improved opcode mapping to better support future instruction set extensions
+7. **Multi-Stage Assembler**: Implemented a sophisticated assembler with lexer, parser, and code generation phases
+8. **Label Support**: Added support for program labels in assembly code (foundation for jumps and branches)
+9. **Comment Handling**: Enhanced assembly syntax with full support for inline and full-line comments
 
 These improvements make the VM more versatile and closer to real-world CPU architectures by providing both stack-based and register-based operation models.
 

@@ -17,7 +17,7 @@ The Rusty 16-bit VM assembly language provides a human-readable way to write pro
 
 ## Registers
 
-The VM has 8 16-bit registers:
+The VM has 13 16-bit registers:
 
 | Register | Index | Purpose                                |
 |----------|-------|----------------------------------------|
@@ -29,6 +29,36 @@ The VM has 8 16-bit registers:
 | PC       | 5     | Program Counter                        |
 | BP       | 6     | Base Pointer                           |
 | FLAGS    | 7     | Status flags                           |
+| R0       | 8     | Pure general purpose                   |
+| R1       | 9     | Pure general purpose                   |
+| R2       | 10    | Pure general purpose                   |
+| R3       | 11    | Pure general purpose                   |
+| R4       | 12    | Pure general purpose                   |
+
+## Instruction and Register Compatibility
+
+The following table shows which registers can be used with each instruction:
+
+| Assembly    | Description                           | Example      | Compatible Registers      |
+| ----------- | ------------------------------------- | ------------ | ------------------------- |
+| `PUSH #n`   | Push decimal value n onto stack       | `PUSH #10`   | -                         |
+| `PUSH $n`   | Push hexadecimal value n onto stack   | `PUSH $0A`   | -                         |
+| `POP reg`   | Pop value from stack into register    | `POP A`      | A-FLAGS, R0-R4           |
+| `PUSHR reg` | Push register value onto stack        | `PUSHR A`    | A-FLAGS, R0-R4           |
+| `ADDS`      | Pop two values, add them, push result | `ADDS`       | -                         |
+| `ADDR r1 r2`| Add registers, store in first register| `ADDR A B`   | A-FLAGS, R0-R4           |
+| `NOP`       | No operation                          | `NOP`        | -                         |
+| `SIG $n`    | Signal the VM with hex code n         | `SIG $09`    | -                         |
+
+**Register Range Notation:**
+- **A-FLAGS**: Refers to registers A through FLAGS (indices 0-7): A, B, C, M, SP, PC, BP, FLAGS
+- **R0-R4**: Refers to the extended general purpose registers (indices 8-12): R0, R1, R2, R3, R4
+- **A-C**: When mentioned, refers only to the primary general purpose registers: A, B, C
+
+While most instructions can technically use any register, it's recommended to:
+1. Use A, B, C for arithmetic and general data
+2. Use R0-R4 for data that shouldn't be modified by instruction side effects
+3. Only modify system registers (SP, PC, etc.) when you understand the implications
 
 ## Instructions
 
@@ -182,7 +212,8 @@ To extend the assembly language with new instructions:
 
 ## Limitations
 
-- Currently, there is no direct instruction for pushing register values onto the stack
-- No conditional branching or jump instructions
+- No conditional branching or jump instructions (though labels are supported in the syntax)
 - No direct memory addressing operations
 - Limited to 8-bit immediate values in instructions
+- Register-to-register operations currently limited to addition
+- No direct arithmetic operations with immediate values (must push to stack first)
