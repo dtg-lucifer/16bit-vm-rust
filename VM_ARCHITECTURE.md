@@ -35,8 +35,18 @@ Each register is 16 bits (2 bytes) wide:
 | PC   | Program | 0              |
 | BP   | Base    | 0              |
 | FLAGS| Status  | 0              |
+| R0   | General | 0              |
+| R1   | General | 0              |
+| R2   | General | 0              |
+| R3   | General | 0              |
+| R4   | General | 0              |
 +------+---------+----------------+
 ```
+
+Register categories:
+- **A, B, C**: Dual-purpose registers used for general storage but also as implicit operands
+- **M, SP, PC, BP, FLAGS**: System registers with dedicated functions
+- **R0-R4**: Pure general-purpose registers for data storage only
 
 ## Core VM Loop
 
@@ -76,7 +86,13 @@ function execute_instruction(opcode, argument):
             SP = SP - 2
             registers[argument] = memory[SP]
 
-        case 0x03:  # ADDSTACK
+        case 0x03:  # PUSHREGISTER
+            # Push register value onto stack
+            value = registers[argument]
+            memory[SP] = value
+            SP = SP + 2
+
+        case 0x0F:  # ADDSTACK
             # Add top two values on stack
             SP = SP - 2
             value1 = memory[SP]
@@ -92,7 +108,13 @@ function execute_instruction(opcode, argument):
             reg2 = (argument >> 4) & 0x0F
             registers[reg1] = registers[reg1] + registers[reg2]
 
-        case 0x05:  # SIGNAL
+        case 0x04:  # ADDREGISTER
+            # Add two registers (high and low 4 bits of argument)
+            reg1 = (argument >> 4) & 0x0F
+            reg2 = argument & 0x0F
+            registers[reg1] = registers[reg1] + registers[reg2]
+
+        case 0x09:  # SIGNAL
             # Signal with a specific code (can be used for halting or I/O)
             execute_signal(argument)
 
@@ -274,6 +296,10 @@ function mulstack():
     result = value1 * value2
     push(result)
 
+// Another example extension: MULREG (multiply registers)
+function mulregister(reg1, reg2):
+    registers[reg1] = registers[reg1] * registers[reg2]
+
 // Sample Program (Calculating 8 * 3 = 24)
 Memory[0] = 0x01  // PUSH
 Memory[1] = 0x08  // Value 8
@@ -335,9 +361,12 @@ Here's a complete example program that adds two numbers and stores the result in
 ```
 ; Add two numbers and store in Register B
 PUSH #10    ; Push 10 onto stack
+POP A       ; Store in Register A
 PUSH #20    ; Push 20 onto stack
-ADDS        ; Add: 10 + 20 = 30
-POP B       ; Store result (30) in Register B
+POP B       ; Store in Register B
+ADDR A B    ; Add: A = A + B (10 + 20 = 30)
+PUSHR A     ; Push result (30) onto stack
+POP R0      ; Store result in R0
 SIG $09     ; Signal to halt the VM
 ```
 
