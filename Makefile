@@ -1,6 +1,6 @@
 PROGRAM_DIR := prog
 PROGRAM_SOURCES := $(wildcard prog/*)
-PROGRAM_ASSEMBLY := $(wildcard prog/*_asm)
+PROGRAM_ASSEMBLY := $(wildcard prog/*.asm)
 PROGRAM_BINARY := prog.bin
 PROGRAM_HEX := prog.hex
 
@@ -19,7 +19,7 @@ run: gen-hex
 .PHONY: run
 
 gen-hex:
-	$(RC) $(R_RUN_FLAGS) --bin asm -- $(PROGRAM_DIR)/add_asm > $(PROGRAM_HEX)
+	$(RC) $(R_RUN_FLAGS) --bin asm -- $(PROGRAM_DIR)/add.asm > $(PROGRAM_HEX)
 .PHONY: gen-hex
 
 build:
