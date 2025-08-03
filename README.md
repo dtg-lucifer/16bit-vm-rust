@@ -80,15 +80,7 @@ graph LR
     R0 -.-> T[Pure Data]
     R4 -.-> U[Pure Data]
 
-    classDef general fill:#f9f9ff,stroke:#333,stroke-width:2px;
-    classDef system fill:#fff9f9,stroke:#333,stroke-width:2px;
-    classDef pure fill:#f9fff9,stroke:#333,stroke-width:2px;
-    classDef function fill:#ffffff,stroke:#333,stroke-width:1px,stroke-dasharray: 5 5;
-
-    class A,B,C general;
-    class M,SP,PC,BP,FLAGS system;
-    class R0,R1,R2,R3,R4 pure;
-    class I,J,K,L,P,Q,R,S,T,U function;
+    classDef function stroke-dasharray: 5 5;
 ```
 
 ### Stack
@@ -157,13 +149,9 @@ graph TB
     Byte0 --> Final["Final Encoding<br>0x04 0x01"]
     Byte1 --> Final
 
-    classDef asm fill:#f9f,stroke:#333;
-    classDef enc fill:#bbf,stroke:#333,color:#000,font-weight:bold;
-    classDef nibble fill:#dbf,stroke:#333;
-    classDef result fill:#bfb,stroke:#333,font-weight:bold;
+    classDef enc font-weight:bold;
+    classDef result font-weight:bold;
 
-    class Ins asm;
-    class Op,Reg1,Reg2 nibble;
     class Byte0,Byte1 enc;
     class Final result;
 ```
@@ -525,13 +513,9 @@ graph TD
     C -.-> I
     E -.-> J
 
-    classDef source fill:#f9f,stroke:#333;
-    classDef bytecode fill:#bbf,stroke:#333,color:#000,font-weight:bold;
-    classDef output fill:#bfb,stroke:#333;
+    classDef bytecode font-weight:bold;
 
-    class A source;
     class C bytecode;
-    class E,F output;
 ```
 
 ## Assembler Implementation
@@ -570,13 +554,9 @@ graph TD
         I
     end
 
-    classDef code fill:#f9f,stroke:#333;
-    classDef data fill:#bbf,stroke:#333,color:#000,font-weight:bold;
-    classDef exec fill:#bfb,stroke:#333;
+    classDef data font-weight:bold;
 
-    class A,B,D,F,H code;
     class C,E,G,I data;
-    class J exec;
 ```
 
 ### Instruction Processing Example
@@ -603,11 +583,9 @@ flowchart TD
         L --> M["A = A + B"]
     end
 
-    classDef source fill:#f9f,stroke:#333,stroke-width:2px;
-    classDef bytecode fill:#bbf,stroke:#333,stroke-width:2px,color:#000,font-weight:bold;
-    classDef result fill:#bfb,stroke:#333,stroke-width:2px;
+    classDef bytecode font-weight:bold;
+    classDef result font-weight:bold;
 
-    class A source;
     class H bytecode;
     class M result;
 ```
