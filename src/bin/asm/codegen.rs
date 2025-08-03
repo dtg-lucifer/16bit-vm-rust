@@ -48,7 +48,13 @@ pub fn generate_bytecode(instrs: &[Instruction]) -> Result<Vec<u8>, String> {
             Instruction::Signal(n) => {
                 bytecode.extend([Op::Signal(0).value(), *n]);
             }
-            Instruction::Jump(label) => todo!("Jump to label: {}", label),
+            Instruction::Jump(label) => {
+                // let offset = labels
+                //     .get(label)
+                //     .ok_or_else(|| format!("Undefined label: {}", label))?;
+                // bytecode.extend([Op::Jump.value(), *offset as u8]);
+                todo!("unimplemented - {label}")
+            }
             Instruction::Label(_) => {} // Skip label in final bytecode
         }
     }

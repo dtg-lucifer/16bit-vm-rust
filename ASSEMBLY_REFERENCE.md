@@ -11,7 +11,7 @@ The Rusty 16-bit VM assembly language provides a human-readable way to write pro
 - One instruction per line
 - Instructions are case-sensitive (must be uppercase)
 - Comments start with `;` and continue to the end of the line
-- Decimal numbers are prefixed with `#` (e.g., `#10`)
+- Decimal numbers are prefixed with `%` (e.g., `%10`)
 - Hexadecimal numbers are prefixed with `$` (e.g., `$0A`)
 - Register names are written directly (e.g., `A`, `B`, `C`)
 
@@ -41,7 +41,7 @@ The following table shows which registers can be used with each instruction:
 
 | Assembly    | Description                           | Example      | Compatible Registers      |
 | ----------- | ------------------------------------- | ------------ | ------------------------- |
-| `PUSH #n`   | Push decimal value n onto stack       | `PUSH #10`   | -                         |
+| `PUSH %n`   | Push decimal value n onto stack       | `PUSH %10`   | -                         |
 | `PUSH $n`   | Push hexadecimal value n onto stack   | `PUSH $0A`   | -                         |
 | `POP reg`   | Pop value from stack into register    | `POP A`      | A-FLAGS, R0-R4           |
 | `PUSHR reg` | Push register value onto stack        | `PUSHR A`    | A-FLAGS, R0-R4           |
@@ -69,14 +69,14 @@ While most instructions can technically use any register, it's recommended to:
 Push an 8-bit value onto the stack.
 
 **Syntax:**
-- `PUSH #n` - Push decimal value n
+- `PUSH %n` - Push decimal value n
 - `PUSH $n` - Push hexadecimal value n
 
 **Examples:**
 ```assembly
-PUSH #10    ; Push decimal 10
+PUSH %10    ; Push decimal 10
 PUSH $0A    ; Push hexadecimal 0A (also 10)
-PUSH #255   ; Push maximum 8-bit value
+PUSH %255   ; Push maximum 8-bit value
 ```
 
 **Encoding:**
@@ -112,8 +112,8 @@ Pop two values from the stack, add them, and push the result back onto the stack
 
 **Example:**
 ```assembly
-PUSH #5     ; Push 5
-PUSH #7     ; Push 7
+PUSH %5     ; Push 5
+PUSH %7     ; Push 7
 ADDS        ; Pop 7, pop 5, push 12 (5+7)
 ```
 
@@ -151,15 +151,15 @@ Here's a complete example program that:
 
 ```assembly
 ; Example program demonstrating register usage
-PUSH #10    ; First operand
-PUSH #24    ; Second operand
+PUSH %10    ; First operand
+PUSH %24    ; Second operand
 ADDS        ; Add: 10 + 24 = 34
 POP B       ; Store sum in register B
-PUSH #5     ; Third operand
-PUSH #22    ; Fourth operand
+PUSH %5     ; Third operand
+PUSH %22    ; Fourth operand
 ADDS        ; Add: 5 + 22 = 27
 POP C       ; Store sum in register C
-PUSH #100   ; Constant value
+PUSH %100   ; Constant value
 POP A       ; Store in register A
 SIG $09     ; Halt VM
 ```

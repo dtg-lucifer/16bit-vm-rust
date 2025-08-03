@@ -62,7 +62,8 @@ fn main() -> Result<(), String> {
         all_tokens.extend(tokens);
     }
 
-    let ir = parser::parse_tokens(&all_tokens);
+    let ir =
+        parser::parse_tokens(&all_tokens).map_err(|e| format!("Error parsing tokens: {}", e))?;
     let byte_code =
         codegen::generate_bytecode(&ir).map_err(|e| format!("Error generating bytecode: {}", e))?;
 

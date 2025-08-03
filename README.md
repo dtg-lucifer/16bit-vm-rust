@@ -2,6 +2,13 @@
 
 A simple 16-bit virtual machine implementation in Rust. This project provides a stack-based VM with a small instruction set to execute basic programs.
 
+## Quick Links
+
+- [Usage Guide](USAGE_GUIDE.md) - How to write, assemble, and run programs
+- [Assembly Reference](ASSEMBLY_REFERENCE.md) - Complete instruction set documentation
+- [Debugging Guide](DEBUGGING_GUIDE.md) - How to debug programs with manual mode
+- [VM Architecture](VM_ARCHITECTURE.md) - Technical details about the VM implementation
+
 ## Architecture Overview
 
 The Rusty 16-bit VM is a stack-based virtual machine designed with simplicity in mind. It executes instructions sequentially, using a stack for data operations and registers for state management. Recent updates have expanded its capabilities with register-to-register operations and enhanced assembler support.
@@ -178,12 +185,14 @@ Memory:
 | Opcode | Mnemonic    | Assembly     | Argument          | Description                                | Compatible Registers |
 | ------ | ----------- | ------------ | ----------------- | ------------------------------------------ | -------------------- |
 | 0x00   | NOP         | `NOP`        | (none)            | No operation                               | -                    |
-| 0x01   | PUSH        | `PUSH #n/$n` | 8-bit value       | Push value onto stack                      | -                    |
+| 0x01   | PUSH        | `PUSH %n/$n` | 8-bit value       | Push value onto stack                      | -                    |
 | 0x02   | POPREGISTER | `POP reg`    | Register index    | Pop value from stack into register         | A-FLAGS, R0-R4       |
 | 0x03   | PUSHREGISTER| `PUSHR reg`  | Register index    | Push register value onto stack             | A-FLAGS, R0-R4       |
 | 0x0F   | ADDSTACK    | `ADDS`       | (none)            | Pop two values, add them, push result      | -                    |
 | 0x04   | ADDREGISTER | `ADDR r1 r2` | Two 4-bit indices | Add two registers, store in first register | A-FLAGS, R0-R4       |
 | 0x09   | SIGNAL      | `SIG $n`     | 8-bit signal code | Signal the VM with a specific code         | -                    |
+
+For complete instruction details, see the [Assembly Reference](ASSEMBLY_REFERENCE.md).
 
 ## Programming the VM
 
@@ -405,30 +414,30 @@ In both cases, the resulting memory contains the same values:
 - **8-bit Operations**: Better for understanding the VM's byte-by-byte operation
 - **16-bit Operations**: More compact code when you're comfortable with the VM
 
-## Debugging Tips
+## Debugging
 
-When writing programs for the VM:
+The VM includes a manual mode for step-by-step debugging:
 
-1. **Track the Stack**: Monitor SP and the values on the stack after each operation
-2. **Check Register Values**: Print register values at key points in your program
-3. **Step Through Execution**: Execute one instruction at a time to identify issues
-4. **Verify Memory Layout**: Ensure instructions are placed correctly in memory
+```bash
+cargo run --bin vm -- prog.hex --manual
+```
 
-Example debugging output:
+In manual mode:
+- Press **Enter** to execute the next instruction
+- Type **s** to display the VM state
+- Type **exit** to quit
+
+The state display shows registers, stack contents, and the next instruction:
 
 ```
-Instruction: opcode=0x01, arg=0x0A @ PC=0 => Push(10)
-SP: 0x1000
-Instruction: opcode=0x01, arg=0x08 @ PC=2 => Push(8)
-SP: 0x1002
-Instruction: opcode=0x03, arg=0x00 @ PC=4 => AddStack
-SP: 0x1004
-AddStack: 10 + 8 = 18
-Instruction: opcode=0x02, arg=0x00 @ PC=6 => PopRegister(A)
-SP: 0x1002
-Instruction: opcode=0x05, arg=0x09 @ PC=8 => Signal(9)
-SP: 0x1000
+[State] PC=0x0004 | SP=0x1004 | FLAGS=0b00000000
+Regs: A=0x0000(0) B=0x0000(0) C=0x0000(0) M=0x0000(0)
+     R0=0x0000(0) R1=0x0000(0) R2=0x0000(0) R3=0x0000(0) R4=0x0000(0)
+Stack: [0x1002]=0x0018(24) [0x1000]=0x000A(10)
+Next: 0x0004 | AddStack
 ```
+
+For complete debugging instructions, see the [Debugging Guide](DEBUGGING_GUIDE.md).
 
 ## Assembly Language Support
 
@@ -438,7 +447,7 @@ The VM includes a basic assembler that can translate assembly language instructi
 
 | Assembly    | Description                           | Example      | Registers      |
 | ----------- | ------------------------------------- | ------------ | -------------- |
-| `PUSH #n`   | Push decimal value n onto stack       | `PUSH #10`   | -              |
+| `PUSH %n`   | Push decimal value n onto stack       | `PUSH %10`   | -              |
 | `PUSH $n`   | Push hexadecimal value n onto stack   | `PUSH $0A`   | -              |
 | `POP reg`   | Pop value from stack into register    | `POP A`      | A-H            |
 | `PUSHR reg` | Push register value onto stack        | `PUSHR A`    | A-H            |
@@ -450,17 +459,17 @@ The VM includes a basic assembler that can translate assembly language instructi
 ### Assembly Example
 
 ```
-PUSH #10    ; Push decimal 10 onto the stack
-PUSH #24    ; Push decimal 24 onto the stack
+PUSH %10    ; Push decimal 10 onto the stack
+PUSH %24    ; Push decimal 24 onto the stack
 ADDS        ; Add the two values (10+24=34)
 POP B       ; Store result (34) in register B
-PUSH #5     ; Push decimal 5 onto the stack
-PUSH #22    ; Push decimal 22 onto the stack
+PUSH %5     ; Push decimal 5 onto the stack
+PUSH %22    ; Push decimal 22 onto the stack
 ADDS        ; Add the two values (5+22=27)
 POP C       ; Store result (27) in register C
-PUSH #10    ; Push decimal 10 onto the stack
+PUSH %10    ; Push decimal 10 onto the stack
 POP A       ; Store value (10) in register A
-PUSH #20    ; Push decimal 20 onto the stack
+PUSH %20    ; Push decimal 20 onto the stack
 POP B       ; Store value (20) in register B
 ADDR A B    ; Add registers: A = A + B (10 + 20 = 30)
 PUSHR A     ; Push register A value (30) onto stack
@@ -617,7 +626,7 @@ Each line is converted into a series of tokens like:
 - `Hex` (hexadecimal values)
 - `LabelDecl` (label declarations)
 
-For example, the line `PUSH #10 ; push decimal 10` is tokenized as `[Keyword("PUSH"), Immediate(10)]`, with the comment removed.
+For example, the line `PUSH %10 ; push decimal 10` is tokenized as `[Keyword("PUSH"), Immediate(10)]`, with the comment removed.
 
 ### Stage 2: Parsing
 
@@ -649,7 +658,7 @@ This approach enables support for forward references and jumps to labels defined
 
 Here's how the program from `prog/add_asm` flows through the pipeline:
 
-1. **Source line**: `PUSH #10            ; push 10 onto the stack`
+1. **Source line**: `PUSH %10            ; push 10 onto the stack`
    - **Lexer**: Generates tokens `[Keyword("PUSH"), Immediate(10)]`
    - **Parser**: Creates `Instruction::PushImmediate(10)`
    - **Codegen**: Outputs bytes `[0x01, 0x0A]` (opcode=PUSH, arg=10)
@@ -672,15 +681,15 @@ While the codebase includes support for labels and jump instructions in the pars
 
 ```
 loop_start:
-  PUSH #1           ; push 1 onto stack
+  PUSH %1           ; push 1 onto stack
   ADDR A B          ; A = A + B
   PUSHR A           ; push A onto stack
-  PUSH #100         ; push 100 onto stack
+  PUSH %100         ; push 100 onto stack
   CMP               ; compare values (future instruction)
   JLT loop_start    ; jump if less than (future instruction)
 ```
 
-### Instruction Encoding
+## Instruction Encoding
 
 When converting assembly to bytecode, the assembler follows these encoding rules:
 
@@ -718,6 +727,8 @@ Binary representation:
                 bits        bits
                 0000 = A    0001 = B
 ```
+
+For more detailed information about the VM architecture, see the [VM Architecture](VM_ARCHITECTURE.md) document.
 
 ## Recent Updates
 
