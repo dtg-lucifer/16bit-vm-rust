@@ -27,16 +27,22 @@ gen-hex:
 .PHONY: gen-hex
 
 build:
-	cargo build
+	$(RC) build
 .PHONY: build
 
 format:
-	cargo fmt -- --config-path .rustfmt.toml
+	$(RC) fmt -- --config-path .rustfmt.toml
 .PHONY: format
 
 test:
-	cargo test --tests
+	$(RC) test --tests
 .PHONY: test
 
 watch: gen-hex $(PROGRAM_SOURCES) $(PROGRAM_ASSEMBLY)
 	$(RC) $(R_WATCH_FLAGS) $(R_WATCH_COMMAND)
+
+assemble:
+	$(RC) $(R_RUN_FLAGS) --bin asm -- $(PROGRAM_DIR)/add_asm > $(PROGRAM_HEX)
+
+assemble-run: assemble
+	$(RC) $(R_RUN_FLAGS) --bin vm -- $(PROGRAM_HEX)
